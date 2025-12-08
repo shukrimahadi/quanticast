@@ -2,7 +2,7 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { randomUUID } from "crypto";
 import { storage } from "./storage";
-import { validateChart, analyzeChartWithStrategy } from "./gemini";
+import { validateChart, analyzeChartWithStrategy, annotateChart } from "./gemini";
 import { analyzeRequestSchema, StrategyType } from "@shared/schema";
 import type { Report } from "@shared/schema";
 
@@ -110,6 +110,30 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     } catch (error) {
       console.error("Error deleting report:", error);
       return res.status(500).json({ error: "Failed to delete report" });
+    }
+  });
+
+  // Annotate chart endpoint
+  app.post("/api/annotate", async (req, res) => {
+    try {
+      const { strategy, imageBase64, imageMimeType } = req.body;
+      
+      if (!strategy || !imageBase64 || !imageMimeType) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const annotatedImageDataUrl = await annotateChart(imageBase64, imageMimeType, strategy);
+      
+      return res.json({
+        success: true,
+        annotatedImage: annotatedImageDataUrl,
+      });
+    } catch (error) {
+      console.error("Annotation error:", error);
+      return res.status(500).json({
+        error: "Annotation failed",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   });
 

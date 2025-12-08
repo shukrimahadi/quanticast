@@ -39,6 +39,8 @@ export default function Home() {
   const [logs, setLogs] = useState<string[]>([]);
   const [tickerInput, setTickerInput] = useState<string>('');
   const [captureError, setCaptureError] = useState<string | null>(null);
+  const [lastImageBase64, setLastImageBase64] = useState<string | null>(null);
+  const [lastImageMimeType, setLastImageMimeType] = useState<string | null>(null);
 
   const addLog = useCallback((message: string) => {
     setLogs(prev => [...prev, message]);
@@ -47,6 +49,8 @@ export default function Home() {
   const analyzeMutation = useMutation({
     mutationFn: async (params: { strategy: StrategyType; file: File }) => {
       const imageBase64 = await fileToBase64(params.file);
+      setLastImageBase64(imageBase64);
+      setLastImageMimeType(params.file.type);
       const response = await apiRequest('POST', '/api/analyze', {
         strategy: params.strategy,
         imageBase64,
@@ -221,6 +225,8 @@ export default function Home() {
           <ResultsDashboard
             analysis={analysisData}
             imagePreviewUrl={imagePreviewUrl}
+            imageBase64={lastImageBase64 || undefined}
+            imageMimeType={lastImageMimeType || undefined}
             onNewAnalysis={handleNewAnalysis}
           />
         </main>
