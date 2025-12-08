@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { AppStep, StrategyType, FinalAnalysis, Report } from '@/lib/types';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import Header from '@/components/Header';
 import ChartUpload from '@/components/ChartUpload';
 import StrategySelector from '@/components/StrategySelector';
@@ -11,63 +13,18 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Loader2, AlertCircle, Play } from 'lucide-react';
 
-// todo: remove mock functionality
-const createMockAnalysis = (ticker: string, strategy: string): FinalAnalysis => ({
-  meta: {
-    ticker,
-    strategy_used: strategy,
-    timestamp: new Date().toISOString(),
-  },
-  grading: {
-    grade: 'A+',
-    headline: 'Premium Setup: Liquidity Sweep + FVG Confluence',
-    visual_score: 92,
-    data_score: 85,
-    sentiment_score: 78,
-    risk_reward_score: 88,
-    momentum_score: 82,
-    action_plan: {
-      action: 'BUY STOP',
-      price: '$186.50',
-      stop_loss: '$182.00',
-      target: '$195.00',
-    },
-    reasoning: 'Clear institutional footprint with liquidity grab below Asian session low, followed by aggressive bullish displacement creating a clean Fair Value Gap. No earnings or FOMC in next 72 hours.',
-  },
-  visual_analysis: {
-    trend: 'BULLISH',
-    patterns_detected: ['Fair Value Gap', 'Order Block', 'Liquidity Sweep', 'Break of Structure'],
-    key_levels_visible: {
-      'resistance_1': '$195.50',
-      'support_1': '$182.00',
-      'pivot': '$188.00',
-      'fvg_zone': '$184.20 - $185.80',
-    },
-    chart_quality_check: 'High quality, all elements visible',
-  },
-  agent_grounding: {
-    search_queries_run: ['AAPL earnings date', 'FOMC schedule'],
-    critical_findings: 'No binary events in next 72 hours',
-    divergence_warning: false,
-  },
-  trade_plan: {
-    bias: 'BULLISH',
-    entry_zone: '$185.50 - $186.20',
-    stop_loss: '$182.00',
-    take_profit_1: '$195.00',
-    take_profit_2: '$210.00',
-  },
-  external_data: {
-    search_summary: 'Strong institutional accumulation detected',
-    market_sentiment: 'Risk-On',
-    sources: [
-      { title: 'Technical Analysis Report', uri: 'https://example.com/1' },
-      { title: 'Market Sentiment Dashboard', uri: 'https://example.com/2' },
-    ],
-  },
-  confidence_score: 87,
-  final_verdict: 'EXECUTE: High probability long setup. Enter at $186.50 with SL at $182.00. This is a Grade A+ institutional setup.',
-});
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function Home() {
   const [step, setStep] = useState<AppStep>('UPLOAD');
@@ -77,11 +34,51 @@ export default function Home() {
   const [analysisData, setAnalysisData] = useState<FinalAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
-  const [history, setHistory] = useState<Report[]>([]);
+
+  const { data: history = [] } = useQuery<Report[]>({
+    queryKey: ['/api/reports'],
+  });
 
   const addLog = useCallback((message: string) => {
     setLogs(prev => [...prev, message]);
   }, []);
+
+  const analyzeMutation = useMutation({
+    mutationFn: async (params: { strategy: StrategyType; file: File }) => {
+      const imageBase64 = await fileToBase64(params.file);
+      const response = await apiRequest('POST', '/api/analyze', {
+        strategy: params.strategy,
+        imageBase64,
+        imageMimeType: params.file.type,
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.success && data.report) {
+        addLog('Analysis complete!');
+        setAnalysisData(data.report.data);
+        queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
+        setStep('RESULTS');
+      } else {
+        setError(data.rejection_reason || data.error || 'Analysis failed');
+        setStep('ERROR');
+      }
+    },
+    onError: (err: Error) => {
+      addLog(`Error: ${err.message}`);
+      setError(err.message);
+      setStep('ERROR');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest('DELETE', `/api/reports/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
+    },
+  });
 
   const handleImageSelect = (file: File, url: string) => {
     setImageFile(file);
@@ -94,7 +91,6 @@ export default function Home() {
     setImagePreviewUrl(null);
   };
 
-  // todo: remove mock functionality - replace with real API call
   const runAnalysis = async () => {
     if (!imageFile) return;
 
@@ -103,45 +99,27 @@ export default function Home() {
     setError(null);
 
     addLog('Starting chart validation...');
-    await new Promise(r => setTimeout(r, 800));
-    addLog('Chart validated successfully');
-    addLog(`Ticker detected: AAPL`);
-    addLog(`Timeframe: 4H`);
+    addLog(`Selected strategy: ${selectedStrategy}`);
 
-    setStep('ANALYZING');
-    await new Promise(r => setTimeout(r, 600));
-    addLog(`Initializing ${selectedStrategy} analysis pipeline...`);
-    await new Promise(r => setTimeout(r, 500));
-    addLog('Detecting liquidity zones...');
-    await new Promise(r => setTimeout(r, 700));
-    addLog('Found 3 Fair Value Gaps');
-    await new Promise(r => setTimeout(r, 600));
-    addLog('Analyzing market structure...');
-    await new Promise(r => setTimeout(r, 800));
-    addLog('Grounding with real-time data...');
-    await new Promise(r => setTimeout(r, 700));
-    addLog('Checking economic calendar...');
-    await new Promise(r => setTimeout(r, 500));
-    addLog('Generating trade plan...');
-    await new Promise(r => setTimeout(r, 600));
-    addLog('Analysis complete!');
+    setTimeout(() => {
+      addLog('Validating chart image...');
+    }, 300);
 
-    const mockResult = createMockAnalysis('AAPL', selectedStrategy);
-    setAnalysisData(mockResult);
+    setTimeout(() => {
+      setStep('ANALYZING');
+      addLog('Chart validated successfully');
+      addLog(`Initializing ${selectedStrategy} analysis pipeline...`);
+    }, 600);
 
-    const newReport: Report = {
-      id: Date.now().toString(),
-      timestamp: Date.now(),
-      ticker: mockResult.meta.ticker,
-      strategy: selectedStrategy,
-      grade: mockResult.grading.grade,
-      bias: mockResult.trade_plan.bias,
-      data: mockResult,
-      validation: { is_valid_chart: true, rejection_reason: null },
-    };
-    setHistory(prev => [newReport, ...prev]);
+    setTimeout(() => {
+      addLog('Analyzing patterns and market structure...');
+    }, 1000);
 
-    setStep('RESULTS');
+    setTimeout(() => {
+      addLog('Generating trade plan...');
+    }, 1500);
+
+    analyzeMutation.mutate({ strategy: selectedStrategy, file: imageFile });
   };
 
   const handleNewAnalysis = () => {
@@ -171,7 +149,7 @@ export default function Home() {
   };
 
   const handleDeleteReport = (id: string) => {
-    setHistory(prev => prev.filter(r => r.id !== id));
+    deleteMutation.mutate(id);
   };
 
   if (step === 'REPORTS') {
