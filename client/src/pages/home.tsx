@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { AppStep, StrategyType, FinalAnalysis, Report } from '@/lib/types';
+import { useMutation } from '@tanstack/react-query';
+import { AppStep, StrategyType, FinalAnalysis } from '@/lib/types';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useTicker } from '@/lib/TickerContext';
 import Header from '@/components/Header';
@@ -9,7 +9,6 @@ import StrategySelector from '@/components/StrategySelector';
 import AnalysisProgress from '@/components/AnalysisProgress';
 import AnalysisLogs from '@/components/AnalysisLogs';
 import ResultsDashboard from '@/components/ResultsDashboard';
-import ReportHistory from '@/components/ReportHistory';
 import { TradingViewWidget } from '@/components/TradingViewWidget';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -41,10 +40,6 @@ export default function Home() {
   const [tickerInput, setTickerInput] = useState<string>('');
   const [captureError, setCaptureError] = useState<string | null>(null);
 
-  const { data: history = [] } = useQuery<Report[]>({
-    queryKey: ['/api/reports'],
-  });
-
   const addLog = useCallback((message: string) => {
     setLogs(prev => [...prev, message]);
   }, []);
@@ -74,15 +69,6 @@ export default function Home() {
       addLog(`Error: ${err.message}`);
       setError(err.message);
       setStep('ERROR');
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await apiRequest('DELETE', `/api/reports/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
     },
   });
 
@@ -135,27 +121,6 @@ export default function Home() {
     setAnalysisData(null);
     setLogs([]);
     setError(null);
-  };
-
-  const handleViewHistory = () => {
-    setStep('REPORTS');
-  };
-
-  const handleBackFromHistory = () => {
-    if (analysisData) {
-      setStep('RESULTS');
-    } else {
-      setStep('UPLOAD');
-    }
-  };
-
-  const handleViewReport = (report: Report) => {
-    setAnalysisData(report.data);
-    setStep('RESULTS');
-  };
-
-  const handleDeleteReport = (id: string) => {
-    deleteMutation.mutate(id);
   };
 
   const handleTickerSearch = () => {
@@ -237,30 +202,10 @@ export default function Home() {
     }
   };
 
-  if (step === 'REPORTS') {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header 
-          onHistoryClick={handleBackFromHistory}
-          showBackButton
-          onBackClick={handleBackFromHistory}
-        />
-        <main className="max-w-7xl mx-auto px-4 py-6">
-          <ReportHistory
-            reports={history}
-            onBack={handleBackFromHistory}
-            onViewReport={handleViewReport}
-            onDeleteReport={handleDeleteReport}
-          />
-        </main>
-      </div>
-    );
-  }
-
   if (step === 'RESULTS' && analysisData) {
     return (
       <div className="min-h-screen bg-background">
-        <Header onHistoryClick={handleViewHistory} />
+        <Header />
         <main className="max-w-7xl mx-auto px-4 py-6">
           <ResultsDashboard
             analysis={analysisData}
@@ -274,7 +219,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onHistoryClick={handleViewHistory} />
+      <Header />
       
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {(step === 'VALIDATING' || step === 'ANALYZING') && (

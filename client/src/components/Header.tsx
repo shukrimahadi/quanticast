@@ -3,12 +3,11 @@ import { Activity, History, BarChart3, Newspaper, TrendingUp } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 
 interface HeaderProps {
-  onHistoryClick?: () => void;
   showBackButton?: boolean;
   onBackClick?: () => void;
 }
 
-export default function Header({ onHistoryClick, showBackButton, onBackClick }: HeaderProps) {
+export default function Header({ showBackButton, onBackClick }: HeaderProps) {
   const [location] = useLocation();
 
   return (
@@ -61,6 +60,17 @@ export default function Header({ onHistoryClick, showBackButton, onBackClick }: 
               News
             </Button>
           </Link>
+          <Link href="/history">
+            <Button
+              variant={location === '/history' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              data-testid="nav-history"
+            >
+              <History className="w-4 h-4" />
+              History
+            </Button>
+          </Link>
         </nav>
 
         <div className="flex items-center gap-2">
@@ -68,14 +78,15 @@ export default function Header({ onHistoryClick, showBackButton, onBackClick }: 
             <BarChart3 className="w-3.5 h-3.5" />
             <span>Chart Analysis Engine</span>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onHistoryClick}
-            data-testid="button-history"
-          >
-            <History className="w-5 h-5" />
-          </Button>
+          <Link href="/history" className="sm:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              data-testid="button-history-mobile"
+            >
+              <History className="w-5 h-5" />
+            </Button>
+          </Link>
         </div>
       </div>
     </header>
