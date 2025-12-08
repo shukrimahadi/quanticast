@@ -61,12 +61,13 @@ Preferred communication style: Simple, everyday language.
 - `DELETE /api/reports/:id` - Remove saved reports
 
 **AI Integration:**
-- Google Generative AI (Gemini) for chart analysis
+- Google Generative AI (Gemini 2.5 Flash) for chart analysis via @google/genai SDK
 - Two-phase AI workflow:
   1. **Validation Phase**: Determines if image is valid financial chart, extracts metadata (ticker, timeframe, price, chart type)
   2. **Analysis Phase**: Applies selected strategy to generate grading, visual analysis, trade plan, and recommendations
 - Structured JSON responses with Zod schema validation
 - Strategy-specific prompts for each of 13 trading methodologies
+- SDK Usage: `ai.models.generateContent({ model: "gemini-2.5-flash", ... })` with `responseMimeType: "application/json"`
 
 **Image Processing:**
 - Client-side conversion to base64
