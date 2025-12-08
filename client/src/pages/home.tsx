@@ -13,7 +13,7 @@ import { TradingViewWidget } from '@/components/TradingViewWidget';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Loader2, AlertCircle, Play, Search, TrendingUp } from 'lucide-react';
+import { Loader2, AlertCircle, Play, Search, TrendingUp, Camera } from 'lucide-react';
 
 async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -38,6 +38,7 @@ export default function Home() {
   const [logs, setLogs] = useState<string[]>([]);
   const [activeTicker, setActiveTicker] = useState<string>('NASDAQ:AAPL');
   const [tickerInput, setTickerInput] = useState<string>('');
+  const [captureError, setCaptureError] = useState<string | null>(null);
 
   const { data: history = [] } = useQuery<Report[]>({
     queryKey: ['/api/reports'],
@@ -171,6 +172,70 @@ export default function Home() {
     }
   };
 
+  const processFile = (file: File) => {
+    setImageFile(file);
+    setImagePreviewUrl(URL.createObjectURL(file));
+    setCaptureError(null);
+  };
+
+  const captureActiveChart = async () => {
+    setCaptureError(null);
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: "browser" as DisplayCaptureSurfaceType },
+        audio: false,
+      });
+
+      const video = document.createElement("video");
+      video.style.display = "none";
+      video.muted = true;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.srcObject = stream;
+      
+      document.body.appendChild(video);
+      await video.play();
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], "chart_scan.png", { type: "image/png" });
+            processFile(file);
+          }
+        }, "image/png");
+      }
+
+      stream.getTracks().forEach(t => t.stop());
+      video.pause();
+      video.srcObject = null;
+      if (document.body.contains(video)) {
+        document.body.removeChild(video);
+      }
+
+    } catch (err: unknown) {
+      console.error("Capture failed:", err);
+      const error = err as Error & { name?: string };
+      
+      if (error.name === 'NotAllowedError') {
+        return;
+      }
+      
+      if (error.name === 'SecurityError' || error.message?.includes('permissions policy')) {
+        setCaptureError("Browser security blocked capture. Take a screenshot manually and upload below.");
+        return;
+      }
+
+      setCaptureError("Screen capture failed. Please upload manually.");
+    }
+  };
+
   if (step === 'REPORTS') {
     return (
       <div className="min-h-screen bg-background">
@@ -237,7 +302,7 @@ export default function Home() {
               <h2 className="text-xl font-semibold">Live Chart</h2>
               <span className="text-sm text-muted-foreground">({activeTicker})</span>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 items-center">
               <Input
                 placeholder="Enter ticker (e.g., AAPL, NYSE:MSFT)"
                 value={tickerInput}
@@ -249,11 +314,23 @@ export default function Home() {
               <Button variant="outline" size="icon" onClick={handleTickerSearch} data-testid="button-search-ticker">
                 <Search className="w-4 h-4" />
               </Button>
+              <Button onClick={captureActiveChart} data-testid="button-scan-chart">
+                <Camera className="w-4 h-4 mr-2" />
+                Scan Chart
+              </Button>
             </div>
           </div>
+          {captureError && (
+            <Card className="p-3 border-amber-500/30 bg-amber-500/5">
+              <div className="flex items-center gap-2 text-sm text-amber-400">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {captureError}
+              </div>
+            </Card>
+          )}
           <TradingViewWidget symbol={activeTicker} />
           <p className="text-xs text-muted-foreground">
-            Take a screenshot of the chart above and upload it below for AI analysis
+            Click "Scan Chart" to capture the chart above, or take a screenshot manually and upload it below
           </p>
         </div>
 
