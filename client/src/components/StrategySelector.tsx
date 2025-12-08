@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { StrategyType, StrategyInfo } from '@/lib/types';
 import { STRATEGIES } from '@/lib/constants';
 import { Card } from '@/components/ui/card';
-import { TrendingUp, Waves, BarChart2, LineChart, Activity, CircleDot, Target, Layers, Clock, AlertTriangle, GitBranch, Sparkles, Users } from 'lucide-react';
+import { TrendingUp, Waves, BarChart2, LineChart, Activity, CircleDot, Target, Layers, Clock, AlertTriangle, GitBranch, Sparkles, Users, Crosshair } from 'lucide-react';
 
 interface StrategySelectorProps {
   selected: StrategyType;
@@ -11,6 +11,7 @@ interface StrategySelectorProps {
 
 const strategyIcons: Record<StrategyType, typeof TrendingUp> = {
   [StrategyType.SMC]: Target,
+  [StrategyType.ICT_2022]: Crosshair,
   [StrategyType.LIQUIDITY_FLOW]: Waves,
   [StrategyType.VCP]: BarChart2,
   [StrategyType.CAN_SLIM]: TrendingUp,

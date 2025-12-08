@@ -1,0 +1,298 @@
+Yes, the "ICT 2022 Mentorship Model" is a specific application of broader Price Action concepts. You might find similar strategies under names like "Liquidity Sweep & Break of Structure", "Stop Run & Reversal", or "Order Block + Imbalance Strategy". However, the strict inclusion of Time (Kill Zones) and Fair Value Gaps is unique to the ICT branding.
+Here is the complete, robust Python script to backtest this strategy.
+Prerequisites
+You will need to install the following libraries:
+code
+Bash
+pip install yfinance pandas numpy mplfinance
+Python Script
+code
+Python
+import yfinance as yf
+import pandas as pd
+import numpy as np
+import mplfinance as mpf
+from datetime import datetime, time, timedelta
+import pytz
+
+# ==========================================
+# 1. CONFIGURATION & PARAMETERS
+# ==========================================
+TICKER = "EURUSD=X"
+TIMEFRAME = "15m"
+LOOKBACK_DAYS = 59  # yfinance 15m limit is usually 60 days
+RISK_REWARD = 2.0
+PIP_SIZE = 0.0001
+SL_BUFFER_PIPS = 5
+DISPLACEMENT_FACTOR = 2.0  # Candle body must be 2x average
+
+# Kill Zone (NY Local Time)
+KZ_START = time(8, 30)
+KZ_END = time(11, 0)
+
+# ==========================================
+# 2. HELPER FUNCTIONS (PRICE ACTION LOGIC)
+# ==========================================
+
+def calculate_swing_points(df, window=3):
+    """
+    Identifies fractal Swing Highs and Lows.
+    Logic: A high surrounded by 'window' lower highs is a Swing High.
+    """
+    df['Swing_High'] = df['High'][
+        (df['High'] > df['High'].shift(1)) & 
+        (df['High'] > df['High'].shift(-1)) &
+        (df['High'] > df['High'].shift(2)) & 
+        (df['High'] > df['High'].shift(-2))
+    ]
+    
+    df['Swing_Low'] = df['Low'][
+        (df['Low'] < df['Low'].shift(1)) & 
+        (df['Low'] < df['Low'].shift(-1)) &
+        (df['Low'] < df['Low'].shift(2)) & 
+        (df['Low'] < df['Low'].shift(-2))
+    ]
+    return df
+
+def calculate_displacement(df, period=20):
+    """
+    Calculates body size and average body size to identify Displacement.
+    """
+    df['Body_Size'] = abs(df['Close'] - df['Open'])
+    df['Avg_Body'] = df['Body_Size'].rolling(window=period).mean()
+    df['Is_Displacement'] = df['Body_Size'] > (df['Avg_Body'] * DISPLACEMENT_FACTOR)
+    return df
+
+def check_kill_zone(timestamp):
+    """Checks if the timestamp is within NY AM Session."""
+    # Convert timestamp to NY time
+    ny_tz = pytz.timezone('America/New_York')
+    if timestamp.tzinfo is None:
+        timestamp = pytz.utc.localize(timestamp)
+    ny_time = timestamp.astimezone(ny_tz).time()
+    return KZ_START <= ny_time <= KZ_END
+
+# ==========================================
+# 3. MAIN BACKTESTING ENGINE
+# ==========================================
+
+def run_ict_backtest():
+    print(f"--- Fetching Data for {TICKER} ---")
+    data = yf.download(TICKER, period=f"{LOOKBACK_DAYS}d", interval=TIMEFRAME, progress=False)
+    
+    if data.empty:
+        print("No data found. Try reducing lookback days.")
+        return
+
+    # Flatten MultiIndex columns if present (yfinance update fix)
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = data.columns.get_level_values(0)
+
+    # Pre-calculate Logic
+    data = calculate_swing_points(data)
+    data = calculate_displacement(data)
+    
+    trades = []
+    active_trade = None
+    
+    # Store last confirmed swings
+    last_swing_high = None
+    last_swing_high_price = 0.0
+    
+    last_swing_low = None
+    last_swing_low_price = 0.0
+
+    print("--- Running Algorithm ---")
+    
+    # Iterate through candles (skipping first few for calculation window)
+    for i in range(20, len(data) - 1):
+        curr_time = data.index[i]
+        
+        # 1. Track Swings (Update only if confirmed)
+        if not np.isnan(data['Swing_High'].iloc[i-2]): # fractal logic requires delay
+            last_swing_high = data.index[i-2]
+            last_swing_high_price = data['High'].iloc[i-2]
+            
+        if not np.isnan(data['Swing_Low'].iloc[i-2]):
+            last_swing_low = data.index[i-2]
+            last_swing_low_price = data['Low'].iloc[i-2]
+
+        # Trade Management (Check exits if trade is active)
+        if active_trade:
+            # Check Take Profit
+            if (active_trade['Type'] == 'SHORT' and data['Low'].iloc[i] <= active_trade['TP']) or \
+               (active_trade['Type'] == 'LONG' and data['High'].iloc[i] >= active_trade['TP']):
+                active_trade['Result'] = 'WIN'
+                active_trade['Exit_Time'] = curr_time
+                trades.append(active_trade)
+                active_trade = None
+                continue
+                
+            # Check Stop Loss
+            if (active_trade['Type'] == 'SHORT' and data['High'].iloc[i] >= active_trade['SL']) or \
+               (active_trade['Type'] == 'LONG' and data['Low'].iloc[i] <= active_trade['SL']):
+                active_trade['Result'] = 'LOSS'
+                active_trade['Exit_Time'] = curr_time
+                trades.append(active_trade)
+                active_trade = None
+                continue
+            
+            # Close End of Day (Optional, but good for day trading)
+            # if curr_time.hour >= 16: ...
+
+        # 2. Entry Logic (Only if no trade active & inside Kill Zone)
+        if not active_trade and check_kill_zone(curr_time):
+            
+            # --- BEARISH SETUP (Short) ---
+            # A. Liquidity Sweep: Price trades above recent Swing High
+            if data['High'].iloc[i] > last_swing_high_price and last_swing_high_price > 0:
+                
+                # B. Displacement MSS: Current candle closes BELOW previous Swing Low? 
+                # (Simplified 2022 model often looks for shift on lower TF, here we look for aggressive reversal candle)
+                # We check if the candle is Red, Displacement is True, and we broke a local structure
+                is_red = data['Close'].iloc[i] < data['Open'].iloc[i]
+                is_displacement = data['Is_Displacement'].iloc[i]
+                
+                # Check for FVG creation (Gap between i-1 Low and i+1 High... wait, FVG is created by current candle 'i')
+                # Bearish FVG: Low of candle i-1 > High of candle i+1. 
+                # We are at candle 'i'. We need to look at i (displacement) and ensure gap exists with i-2.
+                candle_0 = data.iloc[i]   # Displacement Candle
+                candle_prev = data.iloc[i-1] # Candle before
+                candle_pre_prev = data.iloc[i-2] # Candle 2 before
+                
+                # Bearish FVG Definition: Low[i-2] > High[i]
+                has_fvg = candle_pre_prev['Low'] > candle_0['High']
+                
+                if is_red and is_displacement and has_fvg:
+                    # ENTRY: Limit at the FVG Start (Low of i-2)
+                    entry_price = candle_pre_prev['Low']
+                    stop_loss = data['High'].iloc[i] + (SL_BUFFER_PIPS * PIP_SIZE) # SL above the sweep candle
+                    take_profit = entry_price - (abs(entry_price - stop_loss) * RISK_REWARD)
+                    
+                    active_trade = {
+                        'Time': curr_time,
+                        'Type': 'SHORT',
+                        'Entry': entry_price,
+                        'SL': stop_loss,
+                        'TP': take_profit,
+                        'Setup': 'Liquidity Sweep + FVG',
+                        'Result': 'PENDING'
+                    }
+
+            # --- BULLISH SETUP (Long) ---
+            # A. Liquidity Sweep: Price trades below recent Swing Low
+            elif data['Low'].iloc[i] < last_swing_low_price and last_swing_low_price > 0:
+                
+                is_green = data['Close'].iloc[i] > data['Open'].iloc[i]
+                is_displacement = data['Is_Displacement'].iloc[i]
+                
+                candle_0 = data.iloc[i]
+                candle_pre_prev = data.iloc[i-2]
+                
+                # Bullish FVG Definition: High[i-2] < Low[i]
+                has_fvg = candle_pre_prev['High'] < candle_0['Low']
+                
+                if is_green and is_displacement and has_fvg:
+                    # ENTRY: Limit at FVG Start (High of i-2)
+                    entry_price = candle_pre_prev['High']
+                    stop_loss = data['Low'].iloc[i] - (SL_BUFFER_PIPS * PIP_SIZE)
+                    take_profit = entry_price + (abs(entry_price - stop_loss) * RISK_REWARD)
+                    
+                    active_trade = {
+                        'Time': curr_time,
+                        'Type': 'LONG',
+                        'Entry': entry_price,
+                        'SL': stop_loss,
+                        'TP': take_profit,
+                        'Setup': 'Liquidity Sweep + FVG',
+                        'Result': 'PENDING'
+                    }
+
+    # ==========================================
+    # 4. RESULTS & VISUALIZATION
+    # ==========================================
+    
+    if not trades:
+        print("No trades found matching strict criteria.")
+        return
+
+    df_trades = pd.DataFrame(trades)
+    print("\n--- Trade Signal Report ---")
+    print(df_trades[['Time', 'Type', 'Entry', 'SL', 'Result']])
+    
+    # Calculate Metrics
+    wins = len(df_trades[df_trades['Result'] == 'WIN'])
+    total = len(df_trades)
+    win_rate = (wins / total) * 100 if total > 0 else 0
+    print(f"\nTotal Trades: {total}")
+    print(f"Win Rate: {win_rate:.2f}%")
+
+    # Plotting the last 5 days to visualize
+    last_idx = data.index[-1]
+    start_plot = last_idx - timedelta(days=5)
+    plot_data = data[data.index > start_plot]
+    
+    # Prepare Markers
+    add_plots = []
+    
+    # Markers for Swing Highs (Green dots)
+    swing_highs = plot_data['Swing_High'].fillna(np.nan)
+    if not swing_highs.isna().all():
+        add_plots.append(mpf.make_addplot(swing_highs, type='scatter', markersize=50, marker='^', color='g'))
+
+    # Markers for Swing Lows (Red dots)
+    swing_lows = plot_data['Swing_Low'].fillna(np.nan)
+    if not swing_lows.isna().all():
+        add_plots.append(mpf.make_addplot(swing_lows, type='scatter', markersize=50, marker='v', color='r'))
+
+    # Highlight Trade Entries
+    # Filter trades that happened in the plot window
+    plot_trades = df_trades[df_trades['Time'] > start_plot]
+    
+    entry_markers = [np.nan] * len(plot_data)
+    
+    for idx, row in plot_trades.iterrows():
+        try:
+            # Find integer location of timestamp
+            loc = plot_data.index.get_loc(row['Time'])
+            entry_markers[loc] = row['Entry']
+        except KeyError:
+            pass # Trade time not in plot window
+
+    if any(x > 0 for x in entry_markers if not np.isnan(x)):
+        add_plots.append(mpf.make_addplot(entry_markers, type='scatter', markersize=100, marker='*', color='blue'))
+
+    # Setup Plot Style
+    mc = mpf.make_marketcolors(up='green', down='red', edge='i', wick='i', volume='in', inherit=True)
+    s = mpf.make_mpf_style(marketcolors=mc, gridstyle='--', y_on_right=True)
+
+    mpf.plot(
+        plot_data, 
+        type='candle', 
+        style=s, 
+        addplot=add_plots, 
+        title=f"ICT 2022 Model: {TICKER} (Last 5 Days)",
+        ylabel='Price',
+        volume=False,
+        tight_layout=True,
+        figratio=(12, 6)
+    )
+
+if __name__ == "__main__":
+    run_ict_backtest()
+Explanation of the Logic
+Data Ingestion: We fetch data from Yahoo Finance. Note that Yahoo data is notoriously messy with timezones, so we normalize it to ensure the Kill Zone logic works.
+calculate_swing_points: This finds Fractals (a High with 2 lower highs on left and right). This creates our "Liquidity Pools" (Buy Side / Sell Side Liquidity).
+calculate_displacement: ICT emphasizes that a market structure shift is only valid if it happens with energy. We check if the candle body is 2x larger than the average of the last 20 candles.
+Kill Zone Filter: The strategy only executes if the current candle time is between 08:30 and 11:00 New York Time.
+The Entry Loop:
+Sweep: It checks if the current candle breached the last confirmed Swing High/Low.
+MSS & Displacement: It checks if the current candle is a large displacement candle moving in the opposite direction.
+FVG Check: It explicitly compares High[i-2] vs Low[i] (for longs) or Low[i-2] vs High[i] (for shorts) to ensure a gap exists.
+Trade Management: Once a trade is flagged, the script stops looking for new trades and tracks price action candle-by-candle to see if it hits the TP or SL first.
+How to Interpret the Output
+Console: You will see a table of trades. Result will show "WIN" if TP was hit, "LOSS" if SL was hit, or "PENDING" if the trade was still open at the end of the data.
+Chart:
+Green Triangles: Swing Highs (Liquidity).
+Red Triangles: Swing Lows (Liquidity).
+Blue Stars: Where the algorithm identified a valid entry setup (Displacement + FVG inside Killzone).

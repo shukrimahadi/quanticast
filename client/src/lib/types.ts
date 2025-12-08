@@ -1,5 +1,6 @@
 export enum StrategyType {
   SMC = 'SMC',
+  ICT_2022 = 'ICT_2022',
   LIQUIDITY_FLOW = 'LIQUIDITY_FLOW',
   CAN_SLIM = 'CAN_SLIM',
   VCP = 'VCP',

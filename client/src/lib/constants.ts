@@ -8,6 +8,12 @@ export const STRATEGIES: StrategyInfo[] = [
     description: 'Liquidity sweeps, FVGs, and market structure shifts'
   },
   {
+    id: StrategyType.ICT_2022,
+    name: 'ICT 2022 Model',
+    style: 'Precision Day Trading',
+    description: 'Liquidity sweeps, MSS with displacement, FVGs, Kill Zones'
+  },
+  {
     id: StrategyType.LIQUIDITY_FLOW,
     name: 'Liquidity Flow',
     style: 'Day Trading',

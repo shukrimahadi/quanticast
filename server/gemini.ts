@@ -10,6 +10,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 const STRATEGY_DESCRIPTIONS: Record<string, string> = {
   SMC: "Smart Money Concepts (SMC) - Analyze order blocks, liquidity pools, fair value gaps, breaker blocks, mitigation blocks, and institutional order flow",
+  ICT_2022: "ICT 2022 Mentorship Model - Identify Liquidity Sweeps (raids above/below swing highs/lows), Market Structure Shift (MSS) with Displacement, Fair Value Gaps (FVG), and Kill Zone timing (NY AM 8:30-11:00). Look for stop hunts followed by aggressive displacement candles creating imbalances",
   LIQUIDITY_FLOW: "Liquidity Flow Analysis - Track where liquidity is being swept, stop hunts, liquidity grabs, and smart money accumulation/distribution",
   CAN_SLIM: "CAN SLIM Strategy - Evaluate Current earnings, Annual earnings, New products/management, Supply/demand, Leader/laggard, Institutional sponsorship, Market direction",
   VCP: "Volatility Contraction Pattern - Identify price consolidations with decreasing volatility, pivot points, and breakout setups with volume confirmation",
@@ -263,6 +264,7 @@ export interface AnnotationResult {
 
 const ANNOTATION_PROMPTS: Record<string, string> = {
   SMC: `Identify and locate: Fair Value Gaps (FVG) as rectangles, Order Blocks as rectangles, Liquidity Sweeps as labels at swing points. Use RED for bearish, GREEN for bullish elements.`,
+  ICT_2022: `Identify ICT 2022 Model elements: 1) Mark Swing Highs with "BSL" (Buy Side Liquidity) labels and Swing Lows with "SSL" (Sell Side Liquidity) labels. 2) Draw rectangles around Fair Value Gaps (FVG) - bullish FVG in green, bearish FVG in red. 3) Mark the Liquidity Sweep point where price raids above/below a swing. 4) Draw a line at Market Structure Shift (MSS) level. 5) Mark Displacement candles with arrows. 6) If visible, note Kill Zone timing.`,
   LIQUIDITY_FLOW: `Identify: Buy Side Liquidity zones (swing highs) and Sell Side Liquidity zones (swing lows). Mark liquidity sweeps and stop hunts.`,
   ELLIOTT: `Count and label Elliott Waves: Impulse waves 1-2-3-4-5 and corrective waves A-B-C. Draw lines connecting wave pivots.`,
   WYCKOFF: `Identify Wyckoff phases and events: PS (Preliminary Support), SC (Selling Climax), AR (Automatic Rally), ST (Secondary Test), Spring, SOS (Sign of Strength). Label key points.`,
