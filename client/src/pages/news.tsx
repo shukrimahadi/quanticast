@@ -9,15 +9,54 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Newspaper, Search, ArrowLeft, TrendingUp, Globe } from 'lucide-react';
 
+const SYMBOL_ALIASES: Record<string, string> = {
+  'BITCOIN': 'BINANCE:BTCUSDT',
+  'BTC': 'BINANCE:BTCUSDT',
+  'BTCUSD': 'BINANCE:BTCUSDT',
+  'ETHEREUM': 'BINANCE:ETHUSDT',
+  'ETH': 'BINANCE:ETHUSDT',
+  'ETHUSD': 'BINANCE:ETHUSDT',
+  'GOLD': 'TVC:GOLD',
+  'XAUUSD': 'TVC:GOLD',
+  'SILVER': 'TVC:SILVER',
+  'XAGUSD': 'TVC:SILVER',
+  'OIL': 'TVC:USOIL',
+  'USOIL': 'TVC:USOIL',
+  'CRUDE': 'TVC:USOIL',
+  'EURUSD': 'FX:EURUSD',
+  'GBPUSD': 'FX:GBPUSD',
+  'USDJPY': 'FX:USDJPY',
+  'DXY': 'TVC:DXY',
+  'SPX': 'SP:SPX',
+  'SPY': 'AMEX:SPY',
+  'QQQ': 'NASDAQ:QQQ',
+  'DJI': 'DJ:DJI',
+  'VIX': 'TVC:VIX',
+};
+
+function normalizeSymbol(input: string): string {
+  const upper = input.trim().toUpperCase();
+  
+  if (upper.includes(':')) {
+    return upper;
+  }
+  
+  if (SYMBOL_ALIASES[upper]) {
+    return SYMBOL_ALIASES[upper];
+  }
+  
+  return `NASDAQ:${upper}`;
+}
+
 export default function News() {
   const { activeTicker, setActiveTicker } = useTicker();
   const [tickerInput, setTickerInput] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('market');
 
   const handleTickerSearch = () => {
-    const val = tickerInput.trim().toUpperCase();
+    const val = tickerInput.trim();
     if (val) {
-      const formatted = val.includes(':') ? val : `NASDAQ:${val}`;
+      const formatted = normalizeSymbol(val);
       setActiveTicker(formatted);
       setTickerInput('');
       setActiveTab('symbol');
@@ -58,11 +97,11 @@ export default function News() {
             </div>
             <div className="flex gap-2">
               <Input
-                placeholder="Enter ticker (e.g., AAPL, TSLA)"
+                placeholder="AAPL, BTC, GOLD, OIL..."
                 value={tickerInput}
                 onChange={(e) => setTickerInput(e.target.value)}
                 onKeyDown={handleTickerKeyDown}
-                className="w-64"
+                className="w-48"
                 data-testid="input-news-ticker"
               />
               <Button variant="outline" size="icon" onClick={handleTickerSearch} data-testid="button-news-search">
@@ -93,7 +132,7 @@ export default function News() {
               </p>
               <TradingViewNews symbol={activeTicker} feedMode="symbol" />
               <p className="text-xs text-muted-foreground">
-                Note: Some symbols may have limited news coverage. Try major stocks like AAPL, TSLA, or MSFT.
+                Supports stocks (AAPL, TSLA), crypto (BTC, ETH), commodities (GOLD, OIL), forex (EURUSD), and indices (SPX, VIX).
               </p>
             </div>
           </TabsContent>
