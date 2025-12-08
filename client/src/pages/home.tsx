@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { AppStep, StrategyType, FinalAnalysis, Report } from '@/lib/types';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useTicker } from '@/lib/TickerContext';
 import Header from '@/components/Header';
 import ChartUpload from '@/components/ChartUpload';
 import StrategySelector from '@/components/StrategySelector';
@@ -29,6 +30,7 @@ async function fileToBase64(file: File): Promise<string> {
 }
 
 export default function Home() {
+  const { activeTicker, setActiveTicker } = useTicker();
   const [step, setStep] = useState<AppStep>('UPLOAD');
   const [selectedStrategy, setSelectedStrategy] = useState<StrategyType>(StrategyType.SMC);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
@@ -36,7 +38,6 @@ export default function Home() {
   const [analysisData, setAnalysisData] = useState<FinalAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
-  const [activeTicker, setActiveTicker] = useState<string>('NASDAQ:AAPL');
   const [tickerInput, setTickerInput] = useState<string>('');
   const [captureError, setCaptureError] = useState<string | null>(null);
 
