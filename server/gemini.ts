@@ -242,50 +242,94 @@ Be specific with price levels. Use the ${strategy} methodology strictly.`;
   }
 }
 
-const ANNOTATION_INSTRUCTIONS: Record<string, string> = {
-  SMC: "Draw boxes around Fair Value Gaps (FVG) in RED. Mark Liquidity Sweeps (X) at swing highs/lows. Draw Order Blocks as rectangles in BLUE.",
-  LIQUIDITY_FLOW: "Draw horizontal rays at major Swing Highs (Buy Side Liquidity) and Swing Lows (Sell Side Liquidity). Mark Stop Hunts with circles.",
-  ELLIOTT: "Draw the Elliott Wave count (1-2-3-4-5) in BLUE and correction (A-B-C) in YELLOW. Connect pivots with lines.",
-  WYCKOFF: "Label the Wyckoff Phases (PS, SC, AR, ST, Spring). Circle the Spring/Upthrust in GREEN/RED.",
-  VCP: "Draw curved lines underneath the volatility contractions. Draw a straight line at the breakout pivot point.",
-  CAN_SLIM: "Mark the cup-and-handle or base pattern. Draw the pivot/buy point. Mark volume spikes.",
-  DOW: "Draw trend lines connecting Higher Highs and Higher Lows (or Lower Highs and Lower Lows). Mark trend reversals.",
-  GANN: "Draw Gann fan angles from major pivots. Mark key time/price squares.",
-  INVESTMENT_CLOCK: "Mark the current economic cycle phase. Label sector rotation indicators.",
-  LPPL: "Draw the parabolic curve fit. Mark oscillation points and potential crash zone.",
-  INTERMARKET: "Mark correlation signals and divergences between markets.",
-  FRACTAL: "Mark fractal patterns at different scales. Connect self-similar structures.",
-  SENTIMENT: "Mark extreme sentiment zones. Draw sentiment divergences from price.",
+// Annotation data structure for SVG overlay
+export interface ChartAnnotation {
+  id: string;
+  type: "line" | "rectangle" | "label" | "arrow" | "zone";
+  color: string;
+  // Normalized coordinates (0-1 range relative to image dimensions)
+  x1: number;
+  y1: number;
+  x2?: number;
+  y2?: number;
+  label?: string;
+  dashed?: boolean;
+}
+
+export interface AnnotationResult {
+  annotations: ChartAnnotation[];
+  summary: string;
+}
+
+const ANNOTATION_PROMPTS: Record<string, string> = {
+  SMC: `Identify and locate: Fair Value Gaps (FVG) as rectangles, Order Blocks as rectangles, Liquidity Sweeps as labels at swing points. Use RED for bearish, GREEN for bullish elements.`,
+  LIQUIDITY_FLOW: `Identify: Buy Side Liquidity zones (swing highs) and Sell Side Liquidity zones (swing lows). Mark liquidity sweeps and stop hunts.`,
+  ELLIOTT: `Count and label Elliott Waves: Impulse waves 1-2-3-4-5 and corrective waves A-B-C. Draw lines connecting wave pivots.`,
+  WYCKOFF: `Identify Wyckoff phases and events: PS (Preliminary Support), SC (Selling Climax), AR (Automatic Rally), ST (Secondary Test), Spring, SOS (Sign of Strength). Label key points.`,
+  VCP: `Identify Volatility Contraction Pattern: Mark each contraction as the price range narrows. Draw the pivot/breakout level as a horizontal line.`,
+  CAN_SLIM: `Identify: Cup and handle patterns, flat bases, pivot/buy points. Mark volume characteristics if visible.`,
+  DOW: `Draw trend lines: Connect Higher Highs and Higher Lows for uptrend, Lower Highs and Lower Lows for downtrend. Mark trend reversals.`,
+  GANN: `Identify Gann elements: Key angles from major pivots (1x1, 2x1, 1x2), time/price squares, support/resistance levels.`,
+  INVESTMENT_CLOCK: `Mark economic cycle indicators visible in the chart. Identify sector rotation signals.`,
+  LPPL: `Identify bubble/crash patterns: Mark accelerating price curve, oscillation peaks, potential critical points.`,
+  INTERMARKET: `Identify correlation signals: Mark divergences, convergences, and cross-market confirmation signals.`,
+  FRACTAL: `Identify fractal patterns: Mark self-similar structures at different scales, fractal breakout points.`,
+  SENTIMENT: `Identify sentiment extremes: Mark overbought/oversold zones, sentiment divergences from price action.`,
 };
 
 export async function annotateChart(
   imageBase64: string,
   mimeType: string,
   strategy: StrategyType
-): Promise<string> {
-  const drawingInstruction = ANNOTATION_INSTRUCTIONS[strategy] || 
-    "Draw key technical levels (Support/Resistance) in RED and GREEN. Mark important price zones.";
+): Promise<AnnotationResult> {
+  const strategyPrompt = ANNOTATION_PROMPTS[strategy] || 
+    "Identify key support and resistance levels, trend lines, and important price zones.";
 
-  const prompt = `You are a professional technical analyst and chart annotator.
+  const systemPrompt = `You are an expert technical chart analyst. Analyze this trading chart and provide structured annotation data.
 
-Task: Annotate this trading chart image visually based on the ${strategy} framework.
+STRATEGY: ${strategy}
+TASK: ${strategyPrompt}
 
-Instructions: ${drawingInstruction}
+Return a JSON object with annotations to be drawn as an SVG overlay on the chart.
+All coordinates must be NORMALIZED (0.0 to 1.0) where:
+- x=0 is left edge, x=1 is right edge
+- y=0 is TOP edge, y=1 is bottom edge
 
-Important:
-- Draw directly on the chart image
-- Use clear, visible colors that contrast with the chart
-- Add text labels where appropriate
-- Keep annotations clean and professional
-- Do NOT cover important price data
+IMPORTANT: Be precise with coordinates. Look at where price patterns actually occur on the chart.
 
-Output: Return the IMAGE with these annotations drawn directly on it.`;
+JSON Format:
+{
+  "annotations": [
+    {
+      "id": "unique_id",
+      "type": "line" | "rectangle" | "label" | "arrow" | "zone",
+      "color": "#RRGGBB (use #22c55e for bullish, #ef4444 for bearish, #3b82f6 for neutral, #eab308 for warning)",
+      "x1": 0.0-1.0 (start x position),
+      "y1": 0.0-1.0 (start y position),
+      "x2": 0.0-1.0 (end x for lines/rectangles, optional),
+      "y2": 0.0-1.0 (end y for lines/rectangles, optional),
+      "label": "text label (optional)",
+      "dashed": boolean (optional, for potential/unconfirmed levels)
+    }
+  ],
+  "summary": "Brief 1-2 sentence summary of the annotations"
+}
+
+ANNOTATION TYPES:
+- "line": Draw from (x1,y1) to (x2,y2) - use for trend lines, support/resistance
+- "rectangle": Draw box from (x1,y1) to (x2,y2) - use for zones, FVGs, order blocks
+- "label": Place text at (x1,y1) - use for wave counts, phase labels
+- "arrow": Draw arrow from (x1,y1) pointing toward (x2,y2) - use for direction indicators
+- "zone": Horizontal zone from y1 to y2 spanning full width - use for price levels
+
+Provide 5-15 meaningful annotations. Focus on the most significant patterns for the ${strategy} methodology.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-2.5-flash",
       config: {
-        responseModalities: ["image", "text"],
+        systemInstruction: systemPrompt,
+        responseMimeType: "application/json",
       },
       contents: [
         {
@@ -294,19 +338,43 @@ Output: Return the IMAGE with these annotations drawn directly on it.`;
             mimeType: mimeType,
           },
         },
-        prompt,
+        `Analyze this chart using ${strategy} methodology and provide structured annotation coordinates.`,
       ],
     });
 
-    const candidates = response.candidates;
-    if (candidates && candidates[0] && candidates[0].content && candidates[0].content.parts) {
-      for (const part of candidates[0].content.parts) {
-        if (part.inlineData && part.inlineData.data) {
-          return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-        }
-      }
+    const rawJson = response.text;
+    
+    if (rawJson) {
+      const parsed = JSON.parse(rawJson);
+      
+      // Validate and sanitize annotations
+      const annotations: ChartAnnotation[] = (parsed.annotations || [])
+        .filter((a: ChartAnnotation) => 
+          a.type && 
+          typeof a.x1 === 'number' && 
+          typeof a.y1 === 'number' &&
+          a.x1 >= 0 && a.x1 <= 1 &&
+          a.y1 >= 0 && a.y1 <= 1
+        )
+        .map((a: ChartAnnotation, i: number) => ({
+          id: a.id || `ann_${i}`,
+          type: a.type,
+          color: a.color || '#3b82f6',
+          x1: Math.max(0, Math.min(1, a.x1)),
+          y1: Math.max(0, Math.min(1, a.y1)),
+          x2: a.x2 !== undefined ? Math.max(0, Math.min(1, a.x2)) : undefined,
+          y2: a.y2 !== undefined ? Math.max(0, Math.min(1, a.y2)) : undefined,
+          label: a.label,
+          dashed: a.dashed,
+        }));
+
+      return {
+        annotations,
+        summary: parsed.summary || `${annotations.length} annotations generated for ${strategy} analysis.`,
+      };
     }
-    throw new Error("No annotated image generated by model");
+    
+    throw new Error("Empty response from model");
   } catch (error) {
     console.error("Chart annotation error:", error);
     throw new Error(`Annotation failed: ${error}`);

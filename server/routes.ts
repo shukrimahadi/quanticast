@@ -113,7 +113,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Annotate chart endpoint
+  // Annotate chart endpoint - returns structured annotation data for SVG overlay
   app.post("/api/annotate", async (req, res) => {
     try {
       const { strategy, imageBase64, imageMimeType } = req.body;
@@ -122,11 +122,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      const annotatedImageDataUrl = await annotateChart(imageBase64, imageMimeType, strategy);
+      const annotationResult = await annotateChart(imageBase64, imageMimeType, strategy);
       
       return res.json({
         success: true,
-        annotatedImage: annotatedImageDataUrl,
+        annotations: annotationResult.annotations,
+        summary: annotationResult.summary,
       });
     } catch (error) {
       console.error("Annotation error:", error);
