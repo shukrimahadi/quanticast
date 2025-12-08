@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { AppStep, StrategyType, FinalAnalysis, Report } from '@/lib/types';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -9,9 +9,11 @@ import AnalysisProgress from '@/components/AnalysisProgress';
 import AnalysisLogs from '@/components/AnalysisLogs';
 import ResultsDashboard from '@/components/ResultsDashboard';
 import ReportHistory from '@/components/ReportHistory';
+import { TradingViewWidget } from '@/components/TradingViewWidget';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Loader2, AlertCircle, Play } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Loader2, AlertCircle, Play, Search, TrendingUp } from 'lucide-react';
 
 async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -34,6 +36,8 @@ export default function Home() {
   const [analysisData, setAnalysisData] = useState<FinalAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
+  const [activeTicker, setActiveTicker] = useState<string>('NASDAQ:AAPL');
+  const [tickerInput, setTickerInput] = useState<string>('');
 
   const { data: history = [] } = useQuery<Report[]>({
     queryKey: ['/api/reports'],
@@ -152,6 +156,21 @@ export default function Home() {
     deleteMutation.mutate(id);
   };
 
+  const handleTickerSearch = () => {
+    const val = tickerInput.trim().toUpperCase();
+    if (val) {
+      const formatted = val.includes(':') ? val : `NASDAQ:${val}`;
+      setActiveTicker(formatted);
+      setTickerInput('');
+    }
+  };
+
+  const handleTickerKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleTickerSearch();
+    }
+  };
+
   if (step === 'REPORTS') {
     return (
       <div className="min-h-screen bg-background">
@@ -210,6 +229,33 @@ export default function Home() {
             </div>
           </Card>
         )}
+
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-fin-accent" />
+              <h2 className="text-xl font-semibold">Live Chart</h2>
+              <span className="text-sm text-muted-foreground">({activeTicker})</span>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter ticker (e.g., AAPL, NYSE:MSFT)"
+                value={tickerInput}
+                onChange={(e) => setTickerInput(e.target.value)}
+                onKeyDown={handleTickerKeyDown}
+                className="w-64"
+                data-testid="input-ticker"
+              />
+              <Button variant="outline" size="icon" onClick={handleTickerSearch} data-testid="button-search-ticker">
+                <Search className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+          <TradingViewWidget symbol={activeTicker} />
+          <p className="text-xs text-muted-foreground">
+            Take a screenshot of the chart above and upload it below for AI analysis
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-6">
