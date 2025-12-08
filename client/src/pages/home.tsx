@@ -164,18 +164,29 @@ export default function Home() {
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      const maxWidth = 1920;
+      const maxHeight = 1080;
+      let width = video.videoWidth;
+      let height = video.videoHeight;
+      
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
       const ctx = canvas.getContext("2d");
       
       if (ctx) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, 0, 0, width, height);
         canvas.toBlob((blob) => {
           if (blob) {
-            const file = new File([blob], "chart_scan.png", { type: "image/png" });
+            const file = new File([blob], "chart_scan.jpg", { type: "image/jpeg" });
             processFile(file);
           }
-        }, "image/png");
+        }, "image/jpeg", 0.85);
       }
 
       stream.getTracks().forEach(t => t.stop());
