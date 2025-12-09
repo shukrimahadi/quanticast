@@ -35,7 +35,10 @@ export function SponsorBanner({ config }: Props) {
           alt={config.altText} 
           className="w-full h-28 md:h-36 object-cover opacity-90 group-hover:opacity-100 transition-opacity"
           onError={(e) => {
-            e.currentTarget.src = "https://via.placeholder.com/1200x200/1c1c21/3b82f6?text=Sponsor+Placement+Available";
+            // Avoid external placeholders to prevent console errors / CORS issues
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = "data:image/gif;base64,R0lGODlhAQABAAAAACw="; // 1x1 transparent
+            e.currentTarget.style.background = "linear-gradient(135deg, #0f172a, #0b1222)";
           }}
         />
         <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/90 to-transparent p-3 pt-10">
