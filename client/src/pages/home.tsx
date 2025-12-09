@@ -11,6 +11,7 @@ import AnalysisLogs from '@/components/AnalysisLogs';
 import ResultsDashboard from '@/components/ResultsDashboard';
 import { TradingViewWidget } from '@/components/TradingViewWidget';
 import { SponsorBanner } from '@/components/SponsorBanner';
+import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -317,7 +318,7 @@ export default function Home() {
 
   if (step === 'RESULTS' && analysisData) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background pb-20">
         <Header />
         <main className="max-w-7xl mx-auto px-4 py-6">
           <ResultsDashboard
@@ -326,12 +327,13 @@ export default function Home() {
             onNewAnalysis={handleNewAnalysis}
           />
         </main>
+        <BottomNav />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       <Header />
       
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
@@ -488,6 +490,7 @@ export default function Home() {
           </div>
         </div>
       </main>
+      <BottomNav />
     </div>
   );
 }
