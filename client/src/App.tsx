@@ -4,6 +4,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TickerProvider } from "@/lib/TickerContext";
+import { UserProvider, useUser } from "@/lib/UserContext";
+import { Onboarding } from "@/components/Onboarding";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import News from "@/pages/news";
@@ -20,14 +22,36 @@ function Router() {
   );
 }
 
+function AuthenticatedApp() {
+  const { isAuthenticated, isLoading } = useUser();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Onboarding />;
+  }
+
+  return (
+    <TickerProvider>
+      <Router />
+    </TickerProvider>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <TickerProvider>
+        <UserProvider>
           <Toaster />
-          <Router />
-        </TickerProvider>
+          <AuthenticatedApp />
+        </UserProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
