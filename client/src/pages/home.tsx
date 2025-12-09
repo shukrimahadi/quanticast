@@ -13,7 +13,6 @@ import { TradingViewWidget } from '@/components/TradingViewWidget';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Loader2, AlertCircle, Play, Search, TrendingUp, Camera, ChevronDown } from 'lucide-react';
 
 interface TickerOption {
@@ -361,26 +360,24 @@ export default function Home() {
               <span className="text-sm text-muted-foreground">({activeTicker})</span>
             </div>
             <div className="flex flex-wrap gap-2 items-center">
-              <Popover open={tickerDropdownOpen} onOpenChange={setTickerDropdownOpen}>
-                <PopoverTrigger asChild>
-                  <div className="relative">
-                    <Input
-                      placeholder="Search ticker (AAPL, GOLD, BTC...)"
-                      value={tickerInput}
-                      onChange={(e) => {
-                        setTickerInput(e.target.value);
-                        if (e.target.value.length > 0) setTickerDropdownOpen(true);
-                      }}
-                      onFocus={() => setTickerDropdownOpen(true)}
-                      onKeyDown={handleTickerKeyDown}
-                      className="w-72 pr-8"
-                      data-testid="input-ticker"
-                    />
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                  </div>
-                </PopoverTrigger>
-                <PopoverContent className="w-72 p-0" align="start" sideOffset={4}>
-                  <div className="max-h-80 overflow-y-auto">
+              <div className="relative">
+                <Input
+                  placeholder="Search ticker (AAPL, GOLD, BTC...)"
+                  value={tickerInput}
+                  onChange={(e) => {
+                    setTickerInput(e.target.value);
+                    setTickerDropdownOpen(true);
+                  }}
+                  onClick={() => setTickerDropdownOpen(true)}
+                  onFocus={() => setTickerDropdownOpen(true)}
+                  onBlur={() => setTimeout(() => setTickerDropdownOpen(false), 150)}
+                  onKeyDown={handleTickerKeyDown}
+                  className="w-72 pr-8"
+                  data-testid="input-ticker"
+                />
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                {tickerDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-1 w-72 bg-popover border rounded-md shadow-lg z-50 max-h-80 overflow-y-auto">
                     {filteredTickers.length === 0 ? (
                       <div className="p-3 text-sm text-muted-foreground text-center">
                         No matches. Press Enter to use: {tickerInput.toUpperCase().includes(':') ? tickerInput.toUpperCase() : `NASDAQ:${tickerInput.toUpperCase()}`}
@@ -401,8 +398,9 @@ export default function Home() {
                             {tickers.map((t) => (
                               <button
                                 key={t.symbol}
+                                onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => handleTickerSelect(t.symbol)}
-                                className="w-full px-3 py-2 text-left text-sm hover-elevate flex items-center justify-between gap-2"
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center justify-between gap-2"
                                 data-testid={`ticker-option-${t.symbol.replace(':', '-')}`}
                               >
                                 <span className="font-mono text-xs text-fin-accent">{t.symbol}</span>
@@ -414,8 +412,8 @@ export default function Home() {
                       </>
                     )}
                   </div>
-                </PopoverContent>
-              </Popover>
+                )}
+              </div>
               <Button onClick={captureActiveChart} data-testid="button-scan-chart">
                 <Camera className="w-4 h-4 mr-2" />
                 Scan Chart
