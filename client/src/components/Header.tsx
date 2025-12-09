@@ -1,10 +1,63 @@
 import { Link, useLocation } from 'wouter';
-import { Activity, History, BarChart3, Newspaper, TrendingUp } from 'lucide-react';
+import { Activity, History, BarChart3, Newspaper, TrendingUp, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useUser } from '@/lib/UserContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface HeaderProps {
   showBackButton?: boolean;
   onBackClick?: () => void;
+}
+
+function UserMenu() {
+  const { user, logout } = useUser();
+  
+  if (!user) return null;
+
+  const initials = user.displayName
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" data-testid="button-user-menu">
+          <Avatar className="w-8 h-8">
+            <AvatarFallback className="text-xs bg-fin-accent text-white">{initials}</AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">{user.displayName}</p>
+            <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem className="text-xs text-muted-foreground cursor-default" disabled>
+          <User className="w-3.5 h-3.5 mr-2" />
+          {user.experienceLevel} / {user.riskTolerance}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={logout} data-testid="button-logout">
+          <LogOut className="w-4 h-4 mr-2" />
+          Sign Out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 export default function Header({ showBackButton, onBackClick }: HeaderProps) {
@@ -87,6 +140,7 @@ export default function Header({ showBackButton, onBackClick }: HeaderProps) {
               <History className="w-5 h-5" />
             </Button>
           </Link>
+          <UserMenu />
         </div>
       </div>
     </header>

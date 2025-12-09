@@ -154,6 +154,11 @@ export const analyzeRequestSchema = z.object({
   strategy: z.nativeEnum(StrategyType),
   imageBase64: z.string(),
   imageMimeType: z.string(),
+  userProfile: z.object({
+    experienceLevel: z.enum(['Beginner', 'Intermediate', 'Advanced', 'Professional']).optional(),
+    tradingGoal: z.enum(['Income', 'Growth', 'Preservation', 'Speculation']).optional(),
+    riskTolerance: z.enum(['Conservative', 'Moderate', 'Aggressive', 'Very Aggressive']).optional(),
+  }).optional(),
 });
 
 export type ChartMetadata = z.infer<typeof chartMetadataSchema>;
