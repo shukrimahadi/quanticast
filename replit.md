@@ -62,12 +62,14 @@ Preferred communication style: Simple, everyday language.
 
 **AI Integration:**
 - Google Generative AI (Gemini 2.5 Flash) for chart analysis via @google/genai SDK
-- Two-phase AI workflow:
-  1. **Validation Phase**: Determines if image is valid financial chart, extracts metadata (ticker, timeframe, price, chart type)
-  2. **Analysis Phase**: Applies selected strategy to generate grading, visual analysis, trade plan, and recommendations
+- **Three-phase AI workflow (Vision + Search + Synthesis):**
+  1. **Vision Phase (Validation + Analysis)**: Determines if image is valid financial chart, extracts metadata, applies selected strategy to generate grading, visual analysis, trade plan
+  2. **Search Phase (Grounding Agent)**: Uses Gemini Google Search grounding tool to fetch real-time market data - earnings calendar, economic events (CPI, FOMC, GDP), news sentiment, analyst ratings
+  3. **Synthesis Phase (Grade Adjustment)**: Adjusts final grade based on confluence between chart patterns and market catalysts (e.g., A+ visual setup + imminent earnings = B grade with reduced size)
 - Structured JSON responses with Zod schema validation
-- Strategy-specific prompts for each of 13 trading methodologies
-- SDK Usage: `ai.models.generateContent({ model: "gemini-2.5-flash", ... })` with `responseMimeType: "application/json"`
+- Strategy-specific prompts for 14 trading methodologies (including ICT 2022 Mentorship Model)
+- SDK Usage: `ai.models.generateContent({ model: "gemini-2.5-flash", contents: [{ role: "user", parts: [{ text }] }] })` with `responseMimeType: "application/json"`
+- Grounding Tool: `tools: [{ googleSearch: {} }]` enables real web search for market catalysts
 
 **Image Processing:**
 - Client-side conversion to base64
