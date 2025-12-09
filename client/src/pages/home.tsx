@@ -249,10 +249,8 @@ export default function Home() {
 
   const captureActiveChart = async () => {
     setCaptureError(null);
-
     if (isMobile) {
-      setCaptureError("Screen capture is blocked on mobile browsers. Please take a screenshot and upload below.");
-      return;
+      setCaptureError("Mobile browsers often block screen capture. If this fails, please take a screenshot and upload it below.");
     }
 
     if (!navigator.mediaDevices?.getDisplayMedia) {
@@ -260,7 +258,6 @@ export default function Home() {
       return;
     }
 
-    setCaptureError(null);
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { displaySurface: "browser" as DisplayCaptureSurfaceType },
@@ -435,11 +432,9 @@ export default function Home() {
                 onClick={captureActiveChart}
                 data-testid="button-scan-chart"
                 variant="secondary"
-                disabled={isMobile}
-                className={isMobile ? 'opacity-70 cursor-not-allowed' : ''}
               >
                 <Camera className="w-4 h-4 mr-2" />
-                {isMobile ? 'Upload screenshot' : 'Scan Chart'}
+                Scan Chart
               </Button>
             </div>
           </div>
