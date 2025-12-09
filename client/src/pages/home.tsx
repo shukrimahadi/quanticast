@@ -14,7 +14,6 @@ import { SponsorBanner } from '@/components/SponsorBanner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Loader2, AlertCircle, Play, Search, TrendingUp, Camera, ChevronDown } from 'lucide-react';
 
 const SPONSOR_CONFIG: SponsorConfig = {
@@ -100,7 +99,6 @@ export default function Home() {
   const [tickerInput, setTickerInput] = useState<string>('');
   const [tickerDropdownOpen, setTickerDropdownOpen] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
-  const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   const filteredTickers = useMemo(() => {
     const query = tickerInput.trim().toUpperCase();
@@ -250,15 +248,6 @@ export default function Home() {
 
   const captureActiveChart = async () => {
     setCaptureError(null);
-    if (isMobile) {
-      setCaptureError("Mobile browsers often block screen capture. If this fails, please take a screenshot and upload it below.");
-    }
-
-    if (!navigator.mediaDevices?.getDisplayMedia) {
-      setCaptureError("Screen capture is not supported in this browser. Please upload a screenshot manually.");
-      return;
-    }
-
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { displaySurface: "browser" as DisplayCaptureSurfaceType },
@@ -347,30 +336,7 @@ export default function Home() {
       
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         <SponsorBanner config={SPONSOR_CONFIG} />
-
-        {/* Hero overview */}
-        <Card className="p-5 rounded-2xl border border-white/5 bg-gradient-to-br from-[rgba(59,130,246,0.08)] via-[rgba(15,23,42,0.9)] to-[rgba(7,12,24,0.95)] shadow-2xl shadow-black/40">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex flex-col gap-2">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Chart Analysis Engine</span>
-              <h2 className="text-2xl font-semibold text-white">Upload, Select Strategy, Get Instant Trade Intel</h2>
-              <p className="text-sm text-muted-foreground">
-                AI-driven grading, trade plans, and market grounding. Works across stocks, crypto, forex, commodities.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3 min-w-[220px]">
-              <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                <span className="text-[11px] uppercase text-muted-foreground">Latest Grade</span>
-                <div className="text-xl font-mono font-bold text-white mt-1">--</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                <span className="text-[11px] uppercase text-muted-foreground">Confidence</span>
-                <div className="text-xl font-mono font-bold text-white mt-1">--</div>
-              </div>
-            </div>
-          </div>
-        </Card>
-
+        
         {(step === 'VALIDATING' || step === 'ANALYZING') && (
           <AnalysisProgress currentStep={step} />
         )}
@@ -390,114 +356,120 @@ export default function Home() {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 p-4 rounded-2xl border border-white/5 bg-card/80 shadow-xl shadow-black/30 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-fin-accent" />
-                <div className="flex flex-col">
-                  <h2 className="text-xl font-semibold">Live Chart</h2>
-                  <span className="text-sm text-muted-foreground">{activeTicker}</span>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2 items-center">
-                <div className="relative">
-                  <Input
-                    placeholder="Search ticker (AAPL, GOLD, BTC...)"
-                    value={tickerInput}
-                    onChange={(e) => {
-                      setTickerInput(e.target.value);
-                      setTickerDropdownOpen(true);
-                    }}
-                    onClick={() => setTickerDropdownOpen(true)}
-                    onFocus={() => setTickerDropdownOpen(true)}
-                    onBlur={() => setTimeout(() => setTickerDropdownOpen(false), 150)}
-                    onKeyDown={handleTickerKeyDown}
-                    className="w-72 pr-8"
-                    data-testid="input-ticker"
-                  />
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                  {tickerDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-1 w-72 bg-popover border rounded-md shadow-lg z-50 max-h-80 overflow-y-auto">
-                      {filteredTickers.length === 0 ? (
-                        <div className="p-3 text-sm text-muted-foreground text-center">
-                          No matches. Press Enter to use: {tickerInput.toUpperCase().includes(':') ? tickerInput.toUpperCase() : `NASDAQ:${tickerInput.toUpperCase()}`}
-                        </div>
-                      ) : (
-                        <>
-                          {Object.entries(
-                            filteredTickers.reduce((acc, t) => {
-                              if (!acc[t.category]) acc[t.category] = [];
-                              acc[t.category].push(t);
-                              return acc;
-                            }, {} as Record<string, TickerOption[]>)
-                          ).map(([category, tickers]) => (
-                            <div key={category}>
-                              <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/50 sticky top-0">
-                                {category}
-                              </div>
-                              {tickers.map((t) => (
-                                <button
-                                  key={t.symbol}
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => handleTickerSelect(t.symbol)}
-                                  className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center justify-between gap-2"
-                                  data-testid={`ticker-option-${t.symbol.replace(':', '-')}`}
-                                >
-                                  <span className="font-mono text-xs text-fin-accent">{t.symbol}</span>
-                                  <span className="text-muted-foreground truncate">{t.name}</span>
-                                </button>
-                              ))}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-fin-accent" />
+              <h2 className="text-xl font-semibold">Live Chart</h2>
+              <span className="text-sm text-muted-foreground">({activeTicker})</span>
+            </div>
+            <div className="flex flex-wrap gap-2 items-center">
+              <div className="relative">
+                <Input
+                  placeholder="Search ticker (AAPL, GOLD, BTC...)"
+                  value={tickerInput}
+                  onChange={(e) => {
+                    setTickerInput(e.target.value);
+                    setTickerDropdownOpen(true);
+                  }}
+                  onClick={() => setTickerDropdownOpen(true)}
+                  onFocus={() => setTickerDropdownOpen(true)}
+                  onBlur={() => setTimeout(() => setTickerDropdownOpen(false), 150)}
+                  onKeyDown={handleTickerKeyDown}
+                  className="w-72 pr-8"
+                  data-testid="input-ticker"
+                />
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                {tickerDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-1 w-72 bg-popover border rounded-md shadow-lg z-50 max-h-80 overflow-y-auto">
+                    {filteredTickers.length === 0 ? (
+                      <div className="p-3 text-sm text-muted-foreground text-center">
+                        No matches. Press Enter to use: {tickerInput.toUpperCase().includes(':') ? tickerInput.toUpperCase() : `NASDAQ:${tickerInput.toUpperCase()}`}
+                      </div>
+                    ) : (
+                      <>
+                        {Object.entries(
+                          filteredTickers.reduce((acc, t) => {
+                            if (!acc[t.category]) acc[t.category] = [];
+                            acc[t.category].push(t);
+                            return acc;
+                          }, {} as Record<string, TickerOption[]>)
+                        ).map(([category, tickers]) => (
+                          <div key={category}>
+                            <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/50 sticky top-0">
+                              {category}
                             </div>
-                          ))}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <Button
-                  onClick={captureActiveChart}
-                  data-testid="button-scan-chart"
-                  variant="secondary"
-                >
-                  <Camera className="w-4 h-4 mr-2" />
-                  Scan Chart
-                </Button>
+                            {tickers.map((t) => (
+                              <button
+                                key={t.symbol}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => handleTickerSelect(t.symbol)}
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center justify-between gap-2"
+                                data-testid={`ticker-option-${t.symbol.replace(':', '-')}`}
+                              >
+                                <span className="font-mono text-xs text-fin-accent">{t.symbol}</span>
+                                <span className="text-muted-foreground truncate">{t.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
+              <Button onClick={captureActiveChart} data-testid="button-scan-chart">
+                <Camera className="w-4 h-4 mr-2" />
+                Scan Chart
+              </Button>
             </div>
-            {captureError && (
-              <Card className="p-3 border-amber-500/30 bg-amber-500/5">
-                <div className="flex items-center gap-2 text-sm text-amber-400">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  {captureError}
-                </div>
-              </Card>
-            )}
-            <div className="rounded-xl overflow-hidden border border-white/5">
-              <TradingViewWidget symbol={activeTicker} />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Click "Scan Chart" to capture the chart above, or take a screenshot manually and upload it below.
-            </p>
-          </Card>
+          </div>
+          {captureError && (
+            <Card className="p-3 border-amber-500/30 bg-amber-500/5">
+              <div className="flex items-center gap-2 text-sm text-amber-400">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {captureError}
+              </div>
+            </Card>
+          )}
+          <TradingViewWidget symbol={activeTicker} />
+          <p className="text-xs text-muted-foreground">
+            Click "Scan Chart" to capture the chart above, or take a screenshot manually and upload it below
+          </p>
+        </div>
 
-          <Card className="p-4 rounded-2xl border border-white/5 bg-card/80 shadow-xl shadow-black/30 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Select Strategy</h2>
-              <Badge variant="outline" className="text-xs text-muted-foreground">
-                {filteredTickers.length ? 'Updated list' : '14 available'}
-              </Badge>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold mb-2">Upload Chart</h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                Upload a financial chart image for AI-powered analysis
+              </p>
+              <ChartUpload
+                imagePreviewUrl={imagePreviewUrl}
+                onImageSelect={handleImageSelect}
+                onClearImage={handleClearImage}
+                isProcessing={step === 'VALIDATING' || step === 'ANALYZING'}
+              />
             </div>
+
+            {(step === 'VALIDATING' || step === 'ANALYZING') && (
+              <AnalysisLogs logs={logs} />
+            )}
+          </div>
+
+          <div className="space-y-6">
             <StrategySelector
               selected={selectedStrategy}
               onSelect={setSelectedStrategy}
             />
-            <div className="flex flex-col gap-3 pt-2">
+
+            <div className="flex justify-end">
               <Button
                 size="lg"
                 disabled={!imageFile || step === 'VALIDATING' || step === 'ANALYZING'}
                 onClick={runAnalysis}
-                className="w-full"
+                className="w-full sm:w-auto"
                 data-testid="button-analyze"
               >
                 {(step === 'VALIDATING' || step === 'ANALYZING') ? (
@@ -512,39 +484,8 @@ export default function Home() {
                   </>
                 )}
               </Button>
-              <p className="text-xs text-muted-foreground">
-                Choose a strategy and run AI analysis on your uploaded chart.
-              </p>
             </div>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="p-4 rounded-2xl border border-white/5 bg-card/80 shadow-xl shadow-black/30 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold">Upload Chart</span>
-              <Badge variant="outline" className="text-[11px] text-muted-foreground">PNG / JPG / WEBP</Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Upload a financial chart image for AI-powered analysis.
-            </p>
-            <ChartUpload
-              imagePreviewUrl={imagePreviewUrl}
-              onImageSelect={handleImageSelect}
-              onClearImage={handleClearImage}
-              isProcessing={step === 'VALIDATING' || step === 'ANALYZING'}
-            />
-          </Card>
-
-          {(step === 'VALIDATING' || step === 'ANALYZING') && (
-            <Card className="p-4 rounded-2xl border border-white/5 bg-card/80 shadow-xl shadow-black/30">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm font-semibold">Analysis Logs</span>
-                <Badge variant="outline" className="text-[11px] text-muted-foreground">Live</Badge>
-              </div>
-              <AnalysisLogs logs={logs} />
-            </Card>
-          )}
+          </div>
         </div>
       </main>
     </div>
