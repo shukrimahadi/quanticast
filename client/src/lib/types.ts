@@ -159,3 +159,10 @@ export interface StrategyInfo {
   style: string;
   description: string;
 }
+
+export interface SponsorConfig {
+  enabled: boolean;
+  imageUrl: string;
+  targetUrl: string;
+  altText: string;
+}

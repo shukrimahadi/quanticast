@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { AppStep, StrategyType, FinalAnalysis } from '@/lib/types';
+import { AppStep, StrategyType, FinalAnalysis, SponsorConfig } from '@/lib/types';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useTicker } from '@/lib/TickerContext';
 import Header from '@/components/Header';
@@ -10,10 +10,18 @@ import AnalysisProgress from '@/components/AnalysisProgress';
 import AnalysisLogs from '@/components/AnalysisLogs';
 import ResultsDashboard from '@/components/ResultsDashboard';
 import { TradingViewWidget } from '@/components/TradingViewWidget';
+import { SponsorBanner } from '@/components/SponsorBanner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Loader2, AlertCircle, Play, Search, TrendingUp, Camera, ChevronDown } from 'lucide-react';
+
+const SPONSOR_CONFIG: SponsorConfig = {
+  enabled: true,
+  imageUrl: 'https://via.placeholder.com/1200x200/1a1a2e/3b82f6?text=Your+Ad+Here+-+Partner+With+QUANTICAST+AI',
+  targetUrl: '#',
+  altText: 'Become a QUANTICAST AI Partner',
+};
 
 interface TickerOption {
   symbol: string;
@@ -327,6 +335,8 @@ export default function Home() {
       <Header />
       
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        <SponsorBanner config={SPONSOR_CONFIG} />
+        
         {(step === 'VALIDATING' || step === 'ANALYZING') && (
           <AnalysisProgress currentStep={step} />
         )}
