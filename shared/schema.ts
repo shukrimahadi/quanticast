@@ -43,6 +43,48 @@ export const agentGroundingSchema = z.object({
   divergence_warning: z.boolean(),
 });
 
+// Real-time grounding search results
+export const groundingResultSchema = z.object({
+  ticker: z.string(),
+  search_performed: z.boolean(),
+  earnings: z.object({
+    next_date: z.string().nullable(),
+    days_until: z.number().nullable(),
+    is_imminent: z.boolean(), // Within 5 trading days
+    last_surprise: z.string().nullable(),
+  }),
+  economic_calendar: z.object({
+    upcoming_events: z.array(z.string()),
+    high_impact_soon: z.boolean(), // CPI, FOMC, NFP within 3 days
+  }),
+  sentiment: z.object({
+    news_sentiment: z.enum(['Bullish', 'Bearish', 'Neutral', 'Mixed']),
+    recent_headlines: z.array(z.string()),
+    analyst_rating: z.string().nullable(),
+  }),
+  volatility: z.object({
+    implied_volatility_percentile: z.number().nullable(),
+    options_unusual_activity: z.boolean(),
+  }),
+  risk_assessment: z.object({
+    binary_event_risk: z.boolean(),
+    risk_factors: z.array(z.string()),
+    catalyst_alignment: z.enum(['Supports', 'Conflicts', 'Neutral']),
+  }),
+  grade_adjustment: z.object({
+    original_grade: z.enum(["A+", "A", "B", "C"]),
+    adjusted_grade: z.enum(["A+", "A", "B", "C"]),
+    adjustment_reason: z.string(),
+  }),
+  sources: z.array(z.object({
+    title: z.string(),
+    uri: z.string(),
+  })),
+  raw_search_response: z.string(),
+});
+
+export type GroundingResult = z.infer<typeof groundingResultSchema>;
+
 export const tradePlanSchema = z.object({
   bias: z.string(),
   entry_zone: z.string(),
@@ -92,6 +134,7 @@ export const finalAnalysisSchema = z.object({
   agent_grounding: agentGroundingSchema,
   trade_plan: tradePlanSchema,
   external_data: externalDataSchema.optional(),
+  grounding_result: groundingResultSchema.optional(),
   confidence_score: z.number(),
   final_verdict: z.string(),
 });

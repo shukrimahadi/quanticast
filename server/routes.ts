@@ -2,7 +2,7 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { randomUUID } from "crypto";
 import { storage } from "./storage";
-import { validateChart, analyzeChartWithStrategy, annotateChart } from "./gemini";
+import { validateChart, analyzeChartWithStrategy, annotateChart, runGroundingSearch } from "./gemini";
 import { analyzeRequestSchema, StrategyType } from "@shared/schema";
 import type { Report } from "@shared/schema";
 
@@ -47,15 +47,47 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         metadata
       );
 
-      // Step 3: Create and save the report
+      // Step 3: Run Grounding Search for market catalysts
+      console.log(`[PIPELINE] Running grounding search for ${metadata.ticker}...`);
+      const groundingResult = await runGroundingSearch(
+        metadata.ticker,
+        analysis.trade_plan.bias,
+        analysis.grading.grade as "A+" | "A" | "B" | "C"
+      );
+
+      // Step 4: Apply grade adjustment based on grounding confluence
+      const finalGrade = groundingResult.grade_adjustment.adjusted_grade;
+      const gradeChanged = finalGrade !== analysis.grading.grade;
+      
+      if (gradeChanged) {
+        console.log(`[PIPELINE] Grade adjusted: ${analysis.grading.grade} -> ${finalGrade}`);
+        console.log(`[PIPELINE] Reason: ${groundingResult.grade_adjustment.adjustment_reason}`);
+      }
+
+      // Update analysis with grounding results
+      const enrichedAnalysis = {
+        ...analysis,
+        grading: {
+          ...analysis.grading,
+          grade: finalGrade, // Use the adjusted grade
+        },
+        grounding_result: groundingResult,
+        grounding_findings: groundingResult.search_performed
+          ? `Catalyst Analysis: ${groundingResult.risk_assessment.catalyst_alignment} | ` +
+            `Binary Event Risk: ${groundingResult.risk_assessment.binary_event_risk ? "YES" : "NO"} | ` +
+            `Sentiment: ${groundingResult.sentiment.news_sentiment}`
+          : "Grounding search unavailable",
+      };
+
+      // Step 5: Create and save the report
       const report: Report = {
         id: randomUUID(),
         timestamp: Date.now(),
         ticker: metadata.ticker,
         strategy: strategy,
-        grade: analysis.grading.grade,
+        grade: finalGrade, // Use adjusted grade
         bias: analysis.trade_plan.bias,
-        data: analysis,
+        data: enrichedAnalysis,
         validation,
       };
 
@@ -64,6 +96,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       return res.json({
         success: true,
         report,
+        grounding: {
+          performed: groundingResult.search_performed,
+          grade_adjusted: gradeChanged,
+          original_grade: groundingResult.grade_adjustment.original_grade,
+          final_grade: finalGrade,
+          reason: groundingResult.grade_adjustment.adjustment_reason,
+        },
       });
     } catch (error) {
       console.error("Analysis error:", error);

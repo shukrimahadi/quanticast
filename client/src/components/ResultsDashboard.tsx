@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { FinalAnalysis } from '@/lib/types';
+import { FinalAnalysis, GroundingResult } from '@/lib/types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,8 @@ import TradeDNA from './TradeDNA';
 import KeyLevels from './KeyLevels';
 import { 
   RefreshCw, Download, Pencil, Loader2, Layers, AlertTriangle, 
-  Eye, TrendingUp, ArrowUpRight, ArrowDownRight, ExternalLink, Target, Crosshair
+  Eye, TrendingUp, ArrowUpRight, ArrowDownRight, ExternalLink, Target, Crosshair,
+  Search, Calendar, Newspaper, Activity, Shield, CheckCircle, XCircle, AlertCircle
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -65,7 +66,7 @@ function AnnotationOverlay({ annotations, width, height }: { annotations: ChartA
 }
 
 export default function ResultsDashboard({ analysis, imagePreviewUrl, imageBase64, imageMimeType, onNewAnalysis }: ResultsDashboardProps) {
-  const { grading, visual_analysis, trade_plan, external_data, confidence_score, final_verdict, meta } = analysis;
+  const { grading, visual_analysis, trade_plan, external_data, grounding_result, confidence_score, final_verdict, meta } = analysis;
   const [annotations, setAnnotations] = useState<ChartAnnotation[]>([]);
   const [annotationSummary, setAnnotationSummary] = useState<string | null>(null);
   const [isAnnotating, setIsAnnotating] = useState(false);
@@ -213,6 +214,162 @@ export default function ResultsDashboard({ analysis, imagePreviewUrl, imageBase6
                 <> with detected patterns including <span className="text-foreground font-medium">{visual_analysis.patterns_detected.slice(0, 3).join(', ')}</span></>
               )}. {final_verdict}
             </p>
+          </Card>
+
+          {/* Phase 2: Market Grounding - Real-time catalyst search */}
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Search className="w-4 h-4 text-fin-accent" />
+                <h3 className="font-semibold">Phase 2: Market Grounding</h3>
+              </div>
+              {grounding_result?.search_performed ? (
+                <Badge variant="outline" className="text-fin-bull border-fin-bull">
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Live Data
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-muted-foreground">
+                  <AlertCircle className="w-3 h-3 mr-1" />
+                  Offline
+                </Badge>
+              )}
+            </div>
+
+            {grounding_result?.search_performed ? (
+              <div className="space-y-4">
+                {/* Grade Adjustment Banner */}
+                {grounding_result.grade_adjustment.original_grade !== grounding_result.grade_adjustment.adjusted_grade && (
+                  <div className="bg-fin-warning/10 border border-fin-warning/30 rounded-md p-3">
+                    <div className="flex items-center gap-2 text-sm">
+                      <AlertTriangle className="w-4 h-4 text-fin-warning" />
+                      <span className="font-medium text-fin-warning">Grade Adjusted:</span>
+                      <span className="font-mono">{grounding_result.grade_adjustment.original_grade}</span>
+                      <ArrowDownRight className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-mono font-bold">{grounding_result.grade_adjustment.adjusted_grade}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{grounding_result.grade_adjustment.adjustment_reason}</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  {/* Earnings */}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span className="uppercase text-xs font-medium">Earnings</span>
+                    </div>
+                    {grounding_result.earnings.is_imminent ? (
+                      <p className="text-fin-warning font-medium">
+                        {grounding_result.earnings.next_date} ({grounding_result.earnings.days_until}d)
+                      </p>
+                    ) : grounding_result.earnings.next_date ? (
+                      <p className="text-foreground">{grounding_result.earnings.next_date}</p>
+                    ) : (
+                      <p className="text-muted-foreground">No upcoming date</p>
+                    )}
+                  </div>
+
+                  {/* Sentiment */}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Newspaper className="w-3.5 h-3.5" />
+                      <span className="uppercase text-xs font-medium">Sentiment</span>
+                    </div>
+                    <p className={
+                      grounding_result.sentiment.news_sentiment === 'Bullish' ? 'text-fin-bull font-medium' :
+                      grounding_result.sentiment.news_sentiment === 'Bearish' ? 'text-fin-bear font-medium' :
+                      'text-foreground'
+                    }>
+                      {grounding_result.sentiment.news_sentiment}
+                      {grounding_result.sentiment.analyst_rating && ` (${grounding_result.sentiment.analyst_rating})`}
+                    </p>
+                  </div>
+
+                  {/* Catalyst Alignment */}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Activity className="w-3.5 h-3.5" />
+                      <span className="uppercase text-xs font-medium">Catalyst</span>
+                    </div>
+                    <p className={
+                      grounding_result.risk_assessment.catalyst_alignment === 'Supports' ? 'text-fin-bull font-medium' :
+                      grounding_result.risk_assessment.catalyst_alignment === 'Conflicts' ? 'text-fin-bear font-medium' :
+                      'text-foreground'
+                    }>
+                      {grounding_result.risk_assessment.catalyst_alignment === 'Supports' && <CheckCircle className="w-3 h-3 inline mr-1" />}
+                      {grounding_result.risk_assessment.catalyst_alignment === 'Conflicts' && <XCircle className="w-3 h-3 inline mr-1" />}
+                      {grounding_result.risk_assessment.catalyst_alignment}
+                    </p>
+                  </div>
+
+                  {/* Binary Event Risk */}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Shield className="w-3.5 h-3.5" />
+                      <span className="uppercase text-xs font-medium">Event Risk</span>
+                    </div>
+                    {grounding_result.risk_assessment.binary_event_risk ? (
+                      <p className="text-fin-warning font-medium flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        Binary Event
+                      </p>
+                    ) : (
+                      <p className="text-fin-bull font-medium flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        Clear
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Headlines */}
+                {grounding_result.sentiment.recent_headlines.length > 0 && (
+                  <div className="pt-3 border-t border-border">
+                    <p className="text-xs text-muted-foreground uppercase mb-2">Recent Headlines</p>
+                    <ul className="space-y-1">
+                      {grounding_result.sentiment.recent_headlines.slice(0, 2).map((headline, i) => (
+                        <li key={i} className="text-xs text-muted-foreground truncate">{headline}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Risk Factors */}
+                {grounding_result.risk_assessment.risk_factors.length > 0 && (
+                  <div className="pt-3 border-t border-border">
+                    <p className="text-xs text-muted-foreground uppercase mb-2">Risk Factors</p>
+                    <div className="flex flex-wrap gap-1">
+                      {grounding_result.risk_assessment.risk_factors.slice(0, 3).map((factor, i) => (
+                        <Badge key={i} variant="outline" className="text-xs">
+                          {factor}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sources */}
+                {grounding_result.sources.length > 0 && (
+                  <div className="pt-3 border-t border-border">
+                    <p className="text-xs text-muted-foreground uppercase mb-2">Sources ({grounding_result.sources.length})</p>
+                    <div className="flex flex-wrap gap-2">
+                      {grounding_result.sources.slice(0, 3).map((source, i) => (
+                        <a key={i} href={source.uri} target="_blank" rel="noopener noreferrer" 
+                          className="text-xs text-fin-accent hover:underline flex items-center gap-1">
+                          <ExternalLink className="w-3 h-3" />
+                          {source.title.slice(0, 30)}{source.title.length > 30 ? '...' : ''}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Market grounding search was not performed. Analysis based on visual patterns only.
+              </p>
+            )}
           </Card>
 
           <Card className="p-5">

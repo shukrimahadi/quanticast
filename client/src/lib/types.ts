@@ -55,6 +55,42 @@ export interface ExternalData {
   sources: Array<{ title: string; uri: string }>;
 }
 
+export interface GroundingResult {
+  ticker: string;
+  search_performed: boolean;
+  earnings: {
+    next_date: string | null;
+    days_until: number | null;
+    is_imminent: boolean;
+    last_surprise: string | null;
+  };
+  economic_calendar: {
+    upcoming_events: string[];
+    high_impact_soon: boolean;
+  };
+  sentiment: {
+    news_sentiment: 'Bullish' | 'Bearish' | 'Neutral' | 'Mixed';
+    recent_headlines: string[];
+    analyst_rating: string | null;
+  };
+  volatility: {
+    implied_volatility_percentile: number | null;
+    options_unusual_activity: boolean;
+  };
+  risk_assessment: {
+    binary_event_risk: boolean;
+    risk_factors: string[];
+    catalyst_alignment: 'Supports' | 'Conflicts' | 'Neutral';
+  };
+  grade_adjustment: {
+    original_grade: "A+" | "A" | "B" | "C";
+    adjusted_grade: "A+" | "A" | "B" | "C";
+    adjustment_reason: string;
+  };
+  sources: Array<{ title: string; uri: string }>;
+  raw_search_response: string;
+}
+
 export interface GradingData {
   grade: "A+" | "A" | "B" | "C";
   headline: string;
@@ -85,6 +121,7 @@ export interface FinalAnalysis {
   agent_grounding: AgentGrounding;
   trade_plan: TradePlanData;
   external_data?: ExternalData;
+  grounding_result?: GroundingResult;
   confidence_score: number;
   final_verdict: string;
 }

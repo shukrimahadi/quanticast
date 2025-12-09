@@ -3,8 +3,9 @@ import type {
   ValidationResponse,
   FinalAnalysis,
   StrategyType,
+  GroundingResult,
 } from "@shared/schema";
-import { finalAnalysisSchema } from "@shared/schema";
+import { finalAnalysisSchema, groundingResultSchema } from "@shared/schema";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
@@ -240,6 +241,237 @@ Be specific with price levels. Use the ${strategy} methodology strictly.`;
   } catch (error) {
     console.error("Chart analysis error:", error);
     throw new Error(`Analysis failed: ${error}`);
+  }
+}
+
+/**
+ * Grounding Agent: Real-time web search for market catalysts
+ * Uses Gemini's Google Search grounding to fetch:
+ * - Earnings calendar
+ * - Economic events (CPI, FOMC, NFP)
+ * - News sentiment
+ * - Options flow / implied volatility
+ */
+export async function runGroundingSearch(
+  ticker: string,
+  bias: string,
+  originalGrade: "A+" | "A" | "B" | "C"
+): Promise<GroundingResult> {
+  console.log(`[GROUNDING] Starting search for ${ticker}, bias: ${bias}, grade: ${originalGrade}`);
+  
+  const searchQuery = `${ticker} stock upcoming earnings date economic calendar news sentiment analyst ratings recent headlines`;
+  
+  const systemPrompt = `You are a professional market research analyst. Your task is to gather REAL-TIME data for trading decisions.
+
+For ticker: ${ticker}
+Current trade bias: ${bias}
+Current technical grade: ${originalGrade}
+
+Search for and analyze:
+1. EARNINGS: When is the next earnings date? Is it within 5 trading days (imminent)?
+2. ECONOMIC CALENDAR: Any high-impact events (CPI, FOMC, NFP) within 3 days?
+3. NEWS SENTIMENT: What's the recent news tone? Bullish, bearish, neutral, or mixed?
+4. VOLATILITY: Any unusual options activity or high implied volatility?
+5. RISK ASSESSMENT: Are there binary event risks that could invalidate the trade?
+
+After gathering data, determine if the grade should be ADJUSTED:
+- If earnings/CPI/FOMC is imminent (within 3 days): Downgrade by 1 level (binary event risk)
+- If news sentiment CONFLICTS with trade bias: Downgrade by 1 level
+- If news sentiment SUPPORTS trade bias AND no binary events: Keep or upgrade
+- Grade floor is C, ceiling is A+
+
+Provide your analysis in the following format. Be specific with dates and percentages.`;
+
+  try {
+    // Use Gemini with Google Search grounding tool
+    // Combine system prompt and query into a single user message for grounding
+    const fullPrompt = `${systemPrompt}\n\nNow search for real-time information about: ${searchQuery}`;
+    
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: fullPrompt }],
+        },
+      ],
+    });
+
+    const rawText = response.text ?? "";
+    console.log(`[GROUNDING] Raw search response (${rawText.length} chars)`);
+    
+    // Extract grounding metadata if available
+    const sources: { title: string; uri: string }[] = [];
+    
+    // Check for grounding metadata in the response
+    if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
+      for (const chunk of response.candidates[0].groundingMetadata.groundingChunks) {
+        if (chunk.web) {
+          sources.push({
+            title: chunk.web.title || "Source",
+            uri: chunk.web.uri || "",
+          });
+        }
+      }
+    }
+    
+    console.log(`[GROUNDING] Found ${sources.length} sources`);
+
+    // Now parse the response with a second call to structure it
+    const structurePrompt = `Based on this market research for ${ticker}:
+
+${rawText}
+
+Parse and structure this into the following JSON format. Use the actual data from the research above:
+{
+  "ticker": "${ticker}",
+  "search_performed": true,
+  "earnings": {
+    "next_date": "YYYY-MM-DD or null if unknown",
+    "days_until": number or null,
+    "is_imminent": boolean (true if within 5 trading days),
+    "last_surprise": "beat/miss percentage or null"
+  },
+  "economic_calendar": {
+    "upcoming_events": ["array of upcoming high-impact events with dates"],
+    "high_impact_soon": boolean (true if CPI/FOMC/NFP within 3 days)
+  },
+  "sentiment": {
+    "news_sentiment": "Bullish" | "Bearish" | "Neutral" | "Mixed",
+    "recent_headlines": ["up to 3 recent headlines"],
+    "analyst_rating": "Buy/Hold/Sell or null"
+  },
+  "volatility": {
+    "implied_volatility_percentile": number (0-100) or null,
+    "options_unusual_activity": boolean
+  },
+  "risk_assessment": {
+    "binary_event_risk": boolean (true if earnings/CPI/FOMC imminent),
+    "risk_factors": ["list of specific risks"],
+    "catalyst_alignment": "Supports" | "Conflicts" | "Neutral" (relative to ${bias} bias)
+  },
+  "grade_adjustment": {
+    "original_grade": "${originalGrade}",
+    "adjusted_grade": "A+" | "A" | "B" | "C",
+    "adjustment_reason": "Brief explanation of why grade was kept or changed"
+  }
+}
+
+Apply these grading rules:
+- Binary event (earnings/major economic) within 3 days: Downgrade by 1 (A+ -> A, A -> B, B -> C)
+- News sentiment conflicts with ${bias} bias: Downgrade by 1
+- News sentiment supports ${bias} bias + no binary events: May upgrade by 1
+- Multiple negative factors can stack
+- Grade cannot go above A+ or below C`;
+
+    const structuredResponse = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      config: {
+        systemInstruction: "You are a JSON formatter. Output only valid JSON, no markdown.",
+        responseMimeType: "application/json",
+      },
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: structurePrompt }],
+        },
+      ],
+    });
+
+    const structuredJson = structuredResponse.text ?? "{}";
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(structuredJson);
+    } catch (parseError) {
+      console.error("[GROUNDING] JSON parse error:", parseError);
+      console.log("[GROUNDING] Raw JSON:", structuredJson.slice(0, 500));
+      parsed = {};
+    }
+    
+    // Validate and return
+    const parsedAny = parsed as Record<string, any>;
+    const result: GroundingResult = {
+      ticker: (parsedAny.ticker as string) || ticker,
+      search_performed: true,
+      earnings: {
+        next_date: parsedAny.earnings?.next_date || null,
+        days_until: parsedAny.earnings?.days_until ?? null,
+        is_imminent: parsedAny.earnings?.is_imminent ?? false,
+        last_surprise: parsedAny.earnings?.last_surprise || null,
+      },
+      economic_calendar: {
+        upcoming_events: parsedAny.economic_calendar?.upcoming_events || [],
+        high_impact_soon: parsedAny.economic_calendar?.high_impact_soon ?? false,
+      },
+      sentiment: {
+        news_sentiment: parsedAny.sentiment?.news_sentiment || "Neutral",
+        recent_headlines: parsedAny.sentiment?.recent_headlines || [],
+        analyst_rating: parsedAny.sentiment?.analyst_rating || null,
+      },
+      volatility: {
+        implied_volatility_percentile: parsedAny.volatility?.implied_volatility_percentile ?? null,
+        options_unusual_activity: parsedAny.volatility?.options_unusual_activity ?? false,
+      },
+      risk_assessment: {
+        binary_event_risk: parsedAny.risk_assessment?.binary_event_risk ?? false,
+        risk_factors: parsedAny.risk_assessment?.risk_factors || [],
+        catalyst_alignment: parsedAny.risk_assessment?.catalyst_alignment || "Neutral",
+      },
+      grade_adjustment: {
+        original_grade: originalGrade,
+        adjusted_grade: parsedAny.grade_adjustment?.adjusted_grade || originalGrade,
+        adjustment_reason: parsedAny.grade_adjustment?.adjustment_reason || "No adjustment needed",
+      },
+      sources: sources.slice(0, 5), // Limit to 5 sources
+      raw_search_response: rawText.slice(0, 2000), // Truncate for storage
+    };
+
+    console.log(`[GROUNDING] Grade: ${result.grade_adjustment.original_grade} -> ${result.grade_adjustment.adjusted_grade}`);
+    console.log(`[GROUNDING] Reason: ${result.grade_adjustment.adjustment_reason}`);
+    
+    return result;
+  } catch (error) {
+    console.error("[GROUNDING] Search error:", error);
+    
+    // Return a fallback result if grounding fails
+    return {
+      ticker,
+      search_performed: false,
+      earnings: {
+        next_date: null,
+        days_until: null,
+        is_imminent: false,
+        last_surprise: null,
+      },
+      economic_calendar: {
+        upcoming_events: [],
+        high_impact_soon: false,
+      },
+      sentiment: {
+        news_sentiment: "Neutral",
+        recent_headlines: [],
+        analyst_rating: null,
+      },
+      volatility: {
+        implied_volatility_percentile: null,
+        options_unusual_activity: false,
+      },
+      risk_assessment: {
+        binary_event_risk: false,
+        risk_factors: ["Grounding search unavailable"],
+        catalyst_alignment: "Neutral",
+      },
+      grade_adjustment: {
+        original_grade: originalGrade,
+        adjusted_grade: originalGrade,
+        adjustment_reason: "Search unavailable - using visual analysis grade only",
+      },
+      sources: [],
+      raw_search_response: `Error: ${error}`,
+    };
   }
 }
 
