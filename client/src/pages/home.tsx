@@ -19,7 +19,7 @@ import { Loader2, AlertCircle, Play, Search, TrendingUp, Camera, ChevronDown } f
 
 const SPONSOR_CONFIG: SponsorConfig = {
   enabled: true,
-  imageUrl: 'https://via.placeholder.com/1200x200/1a1a2e/3b82f6?text=Your+Ad+Here+-+Partner+With+QUANTICAST+AI',
+  imageUrl: '/banner-sponsor.png', // local fallback to avoid external placeholder errors
   targetUrl: '#',
   altText: 'Become a QUANTICAST AI Partner',
 };
