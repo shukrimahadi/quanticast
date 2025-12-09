@@ -15,7 +15,7 @@ interface CachedGrounding {
   timestamp: number;
 }
 const groundingCache = new Map<string, CachedGrounding>();
-const GROUNDING_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const GROUNDING_CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
 
 function getCachedGrounding(ticker: string): GroundingResult | null {
   const key = ticker.toUpperCase();
