@@ -30,16 +30,16 @@ export default function ResultsDashboard({ analysis, imagePreviewUrl, onNewAnaly
 
   return (
     <div className="space-y-6 animate-fade-in-up">
-      <Card className="p-6 rounded-2xl border border-white/5 bg-gradient-to-br from-[rgba(59,130,246,0.14)] via-[rgba(15,23,42,0.92)] to-[rgba(8,12,22,0.98)] shadow-2xl shadow-black/40">
+      <Card className="p-6">
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="flex items-start gap-4 flex-1">
             <GradeBadge grade={grading.grade} size="lg" />
             <div className="flex-1 min-w-0">
-              <h2 className="text-2xl font-semibold leading-tight mb-2">{grading.headline}</h2>
+              <h2 className="text-xl font-semibold leading-tight mb-2">{grading.headline}</h2>
               <p className="text-sm text-muted-foreground leading-relaxed">{grading.reasoning}</p>
               {showCaution && (
                 <div className="flex items-center gap-2 mt-3">
-                  <Badge variant="outline" className="text-fin-warning border-fin-warning bg-fin-warning/10 rounded-full px-3 py-1">
+                  <Badge variant="outline" className="text-fin-warning border-fin-warning bg-fin-warning/10">
                     <AlertTriangle className="w-3 h-3 mr-1" />
                     CAUTION: Reduce Risk by {riskPercent}%
                   </Badge>
@@ -47,11 +47,11 @@ export default function ResultsDashboard({ analysis, imagePreviewUrl, onNewAnaly
               )}
             </div>
           </div>
-          <div className="lg:border-l lg:pl-6 lg:min-w-[200px]">
-            <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Action Plan</p>
+          <div className="lg:border-l lg:pl-6 lg:min-w-[180px]">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Action Plan</p>
             <p className={`text-lg font-bold font-mono ${actionColor}`}>{grading.action_plan.action}</p>
-            <p className="text-3xl font-bold font-mono mt-1">{grading.action_plan.price}</p>
-            <div className="flex gap-4 mt-3 text-xs">
+            <p className="text-2xl font-bold font-mono mt-1">{grading.action_plan.price}</p>
+            <div className="flex gap-4 mt-2 text-xs">
               <div>
                 <span className="text-muted-foreground">Stop</span>
                 <p className="font-mono text-fin-bear">{grading.action_plan.stop_loss}</p>
@@ -63,40 +63,23 @@ export default function ResultsDashboard({ analysis, imagePreviewUrl, onNewAnaly
             </div>
           </div>
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
-          <div className="rounded-xl border border-white/5 bg-white/5 px-4 py-3 flex items-center justify-between">
-            <div className="text-xs text-muted-foreground uppercase">Bias</div>
-            <Badge className={isBullish ? 'bg-fin-bull text-white' : isBearish ? 'bg-fin-bear text-white' : 'bg-muted'}>
-              {isBullish ? 'LONG' : isBearish ? 'SHORT' : 'NEUTRAL'}
-            </Badge>
-          </div>
-          <div className="rounded-xl border border-white/5 bg-white/5 px-4 py-3 flex items-center justify-between">
-            <div className="text-xs text-muted-foreground uppercase">Confidence</div>
-            <span className="font-mono font-semibold text-lg">{confidence_score}</span>
-          </div>
-          <div className="rounded-xl border border-white/5 bg-white/5 px-4 py-3 flex items-center justify-between">
-            <div className="text-xs text-muted-foreground uppercase">Risk</div>
-            <span className="font-mono font-semibold text-lg">{grading.risk_reward}</span>
-          </div>
-        </div>
-
-        <div className="flex gap-2 justify-end mt-6">
-          <Button variant="outline" className="rounded-full px-4" onClick={onNewAnalysis} data-testid="button-new-analysis">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            New Analysis
-          </Button>
-          <Button variant="outline" className="rounded-full px-4" data-testid="button-export">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-        </div>
       </Card>
+
+      <div className="flex gap-2 justify-end">
+        <Button variant="outline" onClick={onNewAnalysis} data-testid="button-new-analysis">
+          <RefreshCw className="w-4 h-4 mr-2" />
+          New Analysis
+        </Button>
+        <Button variant="outline" data-testid="button-export">
+          <Download className="w-4 h-4 mr-2" />
+          Export
+        </Button>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           {imagePreviewUrl && (
-            <Card className="p-4 space-y-3 rounded-2xl border border-white/5 bg-card/80 shadow-xl shadow-black/30">
+            <Card className="p-4 space-y-3">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <span className="text-sm font-medium">Market Context</span>
                 <Button variant="ghost" size="sm">
@@ -109,7 +92,7 @@ export default function ResultsDashboard({ analysis, imagePreviewUrl, onNewAnaly
             </Card>
           )}
 
-          <Card className="p-5 rounded-2xl border border-white/5 bg-card/80 shadow-xl shadow-black/30">
+          <Card className="p-5">
             <div className="flex items-center gap-2 mb-3">
               <Eye className="w-4 h-4 text-fin-accent" />
               <h3 className="font-semibold">Phase 1: Visual Intelligence</h3>
@@ -123,7 +106,7 @@ export default function ResultsDashboard({ analysis, imagePreviewUrl, onNewAnaly
           </Card>
 
           {/* Phase 2: Market Grounding - Real-time catalyst search */}
-          <Card className="p-5 rounded-2xl border border-white/5 bg-card/80 shadow-xl shadow-black/30">
+          <Card className="p-5">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Search className="w-4 h-4 text-fin-accent" />
@@ -208,7 +191,7 @@ export default function ResultsDashboard({ analysis, imagePreviewUrl, onNewAnaly
             )}
           </Card>
 
-          <Card className="p-5 rounded-2xl border border-white/5 bg-card/80 shadow-xl shadow-black/30">
+          <Card className="p-5">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Crosshair className="w-4 h-4 text-fin-accent" />
@@ -274,7 +257,7 @@ export default function ResultsDashboard({ analysis, imagePreviewUrl, onNewAnaly
             riskReward={grading.risk_reward_score}
           />
           
-          <Card className="p-5 rounded-2xl border border-white/5 bg-gradient-to-br from-[rgba(59,130,246,0.08)] via-[rgba(15,23,42,0.8)] to-[rgba(7,12,24,0.95)] shadow-xl shadow-black/30">
+          <Card className="p-4">
             <h4 className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Confidence</h4>
             <div className="flex items-end gap-2">
               <span className="text-3xl font-bold font-mono">{confidence_score}</span>
@@ -288,11 +271,9 @@ export default function ResultsDashboard({ analysis, imagePreviewUrl, onNewAnaly
             </div>
           </Card>
 
-          <Card className="p-5 rounded-2xl border border-white/5 bg-card/80 shadow-xl shadow-black/30">
-            <KeyLevels levels={visual_analysis.key_levels_visible} />
-          </Card>
+          <KeyLevels levels={visual_analysis.key_levels_visible} />
 
-          <Card className="p-5 rounded-2xl border border-white/5 bg-card/80 shadow-xl shadow-black/30">
+          <Card className="p-4">
             <h4 className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Detected Patterns</h4>
             <div className="flex flex-wrap gap-2">
               {visual_analysis.patterns_detected.length > 0 ? (
@@ -305,7 +286,7 @@ export default function ResultsDashboard({ analysis, imagePreviewUrl, onNewAnaly
             </div>
           </Card>
 
-          <Card className="p-5 rounded-2xl border border-white/5 bg-card/80 shadow-xl shadow-black/30">
+          <Card className="p-4">
             <h4 className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Analysis Info</h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">

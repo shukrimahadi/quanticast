@@ -10,15 +10,14 @@ interface TradeDNAProps {
 }
 
 export default function TradeDNA({ visual, macro, momentum, sentiment, riskReward }: TradeDNAProps) {
-  const clamp01 = (val: number) => Math.min(1, Math.max(0, val));
-
-  // Visual/Macro/Momentum/Sentiment come in as 0-100. Risk/Reward is 0-16.
+  const normalize = (val: number) => Math.min(100, Math.max(0, val)) / 100;
+  
   const metrics = [
-    { label: 'Visual', value: clamp01(visual / 100), angle: -90 },
-    { label: 'Macro', value: clamp01(macro / 100), angle: -18 },
-    { label: 'Momentum', value: clamp01(momentum / 100), angle: 54 },
-    { label: 'Reward', value: clamp01(riskReward / 16), angle: 126 },
-    { label: 'Sentiment', value: clamp01(sentiment / 100), angle: 198 },
+    { label: 'Visual', value: normalize(visual), angle: -90 },
+    { label: 'Macro', value: normalize(macro), angle: -18 },
+    { label: 'Mome', value: normalize(momentum), angle: 54 },
+    { label: 'Reward', value: normalize(riskReward), angle: 126 },
+    { label: 'Sent', value: normalize(sentiment), angle: 198 },
   ];
 
   const centerX = 100;
@@ -41,6 +40,8 @@ export default function TradeDNA({ visual, macro, momentum, sentiment, riskRewar
 
   const dataPoints = metrics.map((m) => getPoint(m.angle, m.value * maxRadius));
   const dataPath = dataPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
+
+  const avgScore = Math.round((visual + macro + momentum + sentiment + riskReward) / 5);
 
   return (
     <Card className="p-4">

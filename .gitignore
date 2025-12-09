@@ -13,3 +13,5 @@ npm-install.log
 .local/
 install-live.log
 npm-install.log
+
+myfiles/

@@ -158,14 +158,6 @@ export interface StrategyInfo {
   name: string;
   style: string;
   description: string;
-  bucket: StrategyBucket;
-}
-
-export enum StrategyBucket {
-  INTRADAY = 'Intraday / Day Trading',
-  SWING = 'Swing / Momentum / Growth',
-  MACRO = 'Macro / Position / Regime',
-  RISK = 'Crash / Risk Overlay',
 }
 
 export interface SponsorConfig {
