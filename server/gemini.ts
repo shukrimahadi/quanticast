@@ -9,6 +9,33 @@ import { finalAnalysisSchema, groundingResultSchema } from "@shared/schema";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
+// Grounding cache: 1-hour TTL per ticker to reduce Google Search costs
+interface CachedGrounding {
+  data: GroundingResult;
+  timestamp: number;
+}
+const groundingCache = new Map<string, CachedGrounding>();
+const GROUNDING_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function getCachedGrounding(ticker: string): GroundingResult | null {
+  const key = ticker.toUpperCase();
+  const cached = groundingCache.get(key);
+  if (cached && Date.now() - cached.timestamp < GROUNDING_CACHE_TTL_MS) {
+    console.log(`[GROUNDING CACHE] Hit for ${key} (age: ${Math.round((Date.now() - cached.timestamp) / 60000)}min)`);
+    return cached.data;
+  }
+  if (cached) {
+    groundingCache.delete(key); // Expired
+  }
+  return null;
+}
+
+function setCachedGrounding(ticker: string, data: GroundingResult): void {
+  const key = ticker.toUpperCase();
+  groundingCache.set(key, { data, timestamp: Date.now() });
+  console.log(`[GROUNDING CACHE] Stored ${key}, cache size: ${groundingCache.size}`);
+}
+
 const STRATEGY_DESCRIPTIONS: Record<string, string> = {
   SMC: "Smart Money Concepts (SMC) - Analyze order blocks, liquidity pools, fair value gaps, breaker blocks, mitigation blocks, and institutional order flow",
   ICT_2022: "ICT 2022 Mentorship Model - Identify Liquidity Sweeps (raids above/below swing highs/lows), Market Structure Shift (MSS) with Displacement, Fair Value Gaps (FVG), and Kill Zone timing (NY AM 8:30-11:00). Look for stop hunts followed by aggressive displacement candles creating imbalances",
@@ -57,7 +84,7 @@ Do not include metadata if the chart is invalid.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite-preview-02-05",
       config: {
         systemInstruction: systemPrompt,
         responseMimeType: "application/json",
@@ -348,6 +375,20 @@ export async function runGroundingSearch(
   bias: string,
   originalGrade: "A+" | "A" | "B" | "C"
 ): Promise<GroundingResult> {
+  // Check cache first to save Google Search costs ($0.035/query)
+  const cachedResult = getCachedGrounding(ticker);
+  if (cachedResult) {
+    // Update the grade adjustment for the current analysis
+    return {
+      ...cachedResult,
+      grade_adjustment: {
+        ...cachedResult.grade_adjustment,
+        original_grade: originalGrade,
+        adjusted_grade: cachedResult.grade_adjustment.adjusted_grade,
+      },
+    };
+  }
+
   const { assetClass, searchQueries } = classifyAsset(ticker);
   console.log(`[GROUNDING] Asset: ${assetClass} | Ticker: ${ticker} | Bias: ${bias} | Grade: ${originalGrade}`);
   console.log(`[GROUNDING] Search queries:`, searchQueries);
@@ -564,6 +605,9 @@ Apply these grading rules:
     console.log(`[GROUNDING] Grade: ${result.grade_adjustment.original_grade} -> ${result.grade_adjustment.adjusted_grade}`);
     console.log(`[GROUNDING] Reason: ${result.grade_adjustment.adjustment_reason}`);
     
+    // Cache the result for 1 hour to reduce API costs
+    setCachedGrounding(ticker, result);
+    
     return result;
   } catch (error) {
     console.error("[GROUNDING] Search error:", error);
@@ -604,145 +648,5 @@ Apply these grading rules:
       sources: [],
       raw_search_response: `Error: ${error}`,
     };
-  }
-}
-
-// Annotation data structure for SVG overlay
-export interface ChartAnnotation {
-  id: string;
-  type: "line" | "rectangle" | "label" | "arrow" | "zone";
-  color: string;
-  // Normalized coordinates (0-1 range relative to image dimensions)
-  x1: number;
-  y1: number;
-  x2?: number;
-  y2?: number;
-  label?: string;
-  dashed?: boolean;
-}
-
-export interface AnnotationResult {
-  annotations: ChartAnnotation[];
-  summary: string;
-}
-
-const ANNOTATION_PROMPTS: Record<string, string> = {
-  SMC: `Identify and locate: Fair Value Gaps (FVG) as rectangles, Order Blocks as rectangles, Liquidity Sweeps as labels at swing points. Use RED for bearish, GREEN for bullish elements.`,
-  ICT_2022: `Identify ICT 2022 Model elements: 1) Mark Swing Highs with "BSL" (Buy Side Liquidity) labels and Swing Lows with "SSL" (Sell Side Liquidity) labels. 2) Draw rectangles around Fair Value Gaps (FVG) - bullish FVG in green, bearish FVG in red. 3) Mark the Liquidity Sweep point where price raids above/below a swing. 4) Draw a line at Market Structure Shift (MSS) level. 5) Mark Displacement candles with arrows. 6) If visible, note Kill Zone timing.`,
-  LIQUIDITY_FLOW: `Identify: Buy Side Liquidity zones (swing highs) and Sell Side Liquidity zones (swing lows). Mark liquidity sweeps and stop hunts.`,
-  ELLIOTT: `Count and label Elliott Waves: Impulse waves 1-2-3-4-5 and corrective waves A-B-C. Draw lines connecting wave pivots.`,
-  WYCKOFF: `Identify Wyckoff phases and events: PS (Preliminary Support), SC (Selling Climax), AR (Automatic Rally), ST (Secondary Test), Spring, SOS (Sign of Strength). Label key points.`,
-  VCP: `Identify Volatility Contraction Pattern: Mark each contraction as the price range narrows. Draw the pivot/breakout level as a horizontal line.`,
-  CAN_SLIM: `Identify: Cup and handle patterns, flat bases, pivot/buy points. Mark volume characteristics if visible.`,
-  DOW: `Draw trend lines: Connect Higher Highs and Higher Lows for uptrend, Lower Highs and Lower Lows for downtrend. Mark trend reversals.`,
-  GANN: `Identify Gann elements: Key angles from major pivots (1x1, 2x1, 1x2), time/price squares, support/resistance levels.`,
-  INVESTMENT_CLOCK: `Mark economic cycle indicators visible in the chart. Identify sector rotation signals.`,
-  LPPL: `Identify bubble/crash patterns: Mark accelerating price curve, oscillation peaks, potential critical points.`,
-  INTERMARKET: `Identify correlation signals: Mark divergences, convergences, and cross-market confirmation signals.`,
-  FRACTAL: `Identify fractal patterns: Mark self-similar structures at different scales, fractal breakout points.`,
-  SENTIMENT: `Identify sentiment extremes: Mark overbought/oversold zones, sentiment divergences from price action.`,
-};
-
-export async function annotateChart(
-  imageBase64: string,
-  mimeType: string,
-  strategy: StrategyType
-): Promise<AnnotationResult> {
-  const strategyPrompt = ANNOTATION_PROMPTS[strategy] || 
-    "Identify key support and resistance levels, trend lines, and important price zones.";
-
-  const systemPrompt = `You are an expert technical chart analyst. Analyze this trading chart and provide structured annotation data.
-
-STRATEGY: ${strategy}
-TASK: ${strategyPrompt}
-
-Return a JSON object with annotations to be drawn as an SVG overlay on the chart.
-All coordinates must be NORMALIZED (0.0 to 1.0) where:
-- x=0 is left edge, x=1 is right edge
-- y=0 is TOP edge, y=1 is bottom edge
-
-IMPORTANT: Be precise with coordinates. Look at where price patterns actually occur on the chart.
-
-JSON Format:
-{
-  "annotations": [
-    {
-      "id": "unique_id",
-      "type": "line" | "rectangle" | "label" | "arrow" | "zone",
-      "color": "#RRGGBB (use #22c55e for bullish, #ef4444 for bearish, #3b82f6 for neutral, #eab308 for warning)",
-      "x1": 0.0-1.0 (start x position),
-      "y1": 0.0-1.0 (start y position),
-      "x2": 0.0-1.0 (end x for lines/rectangles, optional),
-      "y2": 0.0-1.0 (end y for lines/rectangles, optional),
-      "label": "text label (optional)",
-      "dashed": boolean (optional, for potential/unconfirmed levels)
-    }
-  ],
-  "summary": "Brief 1-2 sentence summary of the annotations"
-}
-
-ANNOTATION TYPES:
-- "line": Draw from (x1,y1) to (x2,y2) - use for trend lines, support/resistance
-- "rectangle": Draw box from (x1,y1) to (x2,y2) - use for zones, FVGs, order blocks
-- "label": Place text at (x1,y1) - use for wave counts, phase labels
-- "arrow": Draw arrow from (x1,y1) pointing toward (x2,y2) - use for direction indicators
-- "zone": Horizontal zone from y1 to y2 spanning full width - use for price levels
-
-Provide 5-15 meaningful annotations. Focus on the most significant patterns for the ${strategy} methodology.`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      config: {
-        systemInstruction: systemPrompt,
-        responseMimeType: "application/json",
-      },
-      contents: [
-        {
-          inlineData: {
-            data: imageBase64,
-            mimeType: mimeType,
-          },
-        },
-        `Analyze this chart using ${strategy} methodology and provide structured annotation coordinates.`,
-      ],
-    });
-
-    const rawJson = response.text;
-    
-    if (rawJson) {
-      const parsed = JSON.parse(rawJson);
-      
-      // Validate and sanitize annotations
-      const annotations: ChartAnnotation[] = (parsed.annotations || [])
-        .filter((a: ChartAnnotation) => 
-          a.type && 
-          typeof a.x1 === 'number' && 
-          typeof a.y1 === 'number' &&
-          a.x1 >= 0 && a.x1 <= 1 &&
-          a.y1 >= 0 && a.y1 <= 1
-        )
-        .map((a: ChartAnnotation, i: number) => ({
-          id: a.id || `ann_${i}`,
-          type: a.type,
-          color: a.color || '#3b82f6',
-          x1: Math.max(0, Math.min(1, a.x1)),
-          y1: Math.max(0, Math.min(1, a.y1)),
-          x2: a.x2 !== undefined ? Math.max(0, Math.min(1, a.x2)) : undefined,
-          y2: a.y2 !== undefined ? Math.max(0, Math.min(1, a.y2)) : undefined,
-          label: a.label,
-          dashed: a.dashed,
-        }));
-
-      return {
-        annotations,
-        summary: parsed.summary || `${annotations.length} annotations generated for ${strategy} analysis.`,
-      };
-    }
-    
-    throw new Error("Empty response from model");
-  } catch (error) {
-    console.error("Chart annotation error:", error);
-    throw new Error(`Annotation failed: ${error}`);
   }
 }

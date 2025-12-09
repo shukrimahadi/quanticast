@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
-import { FinalAnalysis, GroundingResult } from '@/lib/types';
+import { FinalAnalysis } from '@/lib/types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,109 +6,19 @@ import GradeBadge from './GradeBadge';
 import TradeDNA from './TradeDNA';
 import KeyLevels from './KeyLevels';
 import { 
-  RefreshCw, Download, Pencil, Loader2, Layers, AlertTriangle, 
-  Eye, TrendingUp, ArrowUpRight, ArrowDownRight, ExternalLink, Target, Crosshair,
+  RefreshCw, Download, AlertTriangle, 
+  Eye, TrendingUp, ArrowDownRight, ExternalLink, Target, Crosshair,
   Search, Calendar, Newspaper, Activity, Shield, CheckCircle, XCircle, AlertCircle
 } from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
-
-interface ChartAnnotation {
-  id: string;
-  type: "line" | "rectangle" | "label" | "arrow" | "zone";
-  color: string;
-  x1: number;
-  y1: number;
-  x2?: number;
-  y2?: number;
-  label?: string;
-  dashed?: boolean;
-}
 
 interface ResultsDashboardProps {
   analysis: FinalAnalysis;
   imagePreviewUrl: string | null;
-  imageBase64?: string;
-  imageMimeType?: string;
   onNewAnalysis: () => void;
 }
 
-function AnnotationOverlay({ annotations, width, height }: { annotations: ChartAnnotation[]; width: number; height: number; }) {
-  return (
-    <svg className="absolute inset-0 pointer-events-none" width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ position: 'absolute', top: 0, left: 0 }}>
-      <defs>
-        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" />
-        </marker>
-      </defs>
-      {annotations.map((ann) => {
-        const x1 = ann.x1 * width;
-        const y1 = ann.y1 * height;
-        const x2 = (ann.x2 ?? ann.x1) * width;
-        const y2 = (ann.y2 ?? ann.y1) * height;
-        switch (ann.type) {
-          case "line":
-            return (<g key={ann.id}><line x1={x1} y1={y1} x2={x2} y2={y2} stroke={ann.color} strokeWidth={2} strokeDasharray={ann.dashed ? "6,4" : undefined} opacity={0.9} />{ann.label && (<text x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 8} fill={ann.color} fontSize="12" fontWeight="600" textAnchor="middle" className="font-mono" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>{ann.label}</text>)}</g>);
-          case "rectangle":
-            return (<g key={ann.id}><rect x={Math.min(x1, x2)} y={Math.min(y1, y2)} width={Math.abs(x2 - x1)} height={Math.abs(y2 - y1)} fill={ann.color} fillOpacity={0.15} stroke={ann.color} strokeWidth={2} strokeDasharray={ann.dashed ? "6,4" : undefined} />{ann.label && (<text x={Math.min(x1, x2) + 4} y={Math.min(y1, y2) + 16} fill={ann.color} fontSize="11" fontWeight="600" className="font-mono" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>{ann.label}</text>)}</g>);
-          case "zone":
-            return (<g key={ann.id}><rect x={0} y={Math.min(y1, y2)} width={width} height={Math.abs(y2 - y1)} fill={ann.color} fillOpacity={0.1} stroke={ann.color} strokeWidth={1} strokeDasharray="4,4" />{ann.label && (<text x={8} y={(y1 + y2) / 2 + 4} fill={ann.color} fontSize="11" fontWeight="600" className="font-mono" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>{ann.label}</text>)}</g>);
-          case "arrow":
-            return (<g key={ann.id} style={{ color: ann.color }}><line x1={x1} y1={y1} x2={x2} y2={y2} stroke={ann.color} strokeWidth={2} markerEnd="url(#arrowhead)" />{ann.label && (<text x={x1} y={y1 - 8} fill={ann.color} fontSize="11" fontWeight="600" textAnchor="middle" className="font-mono" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>{ann.label}</text>)}</g>);
-          case "label":
-            return (<g key={ann.id}><circle cx={x1} cy={y1} r={14} fill={ann.color} fillOpacity={0.9} /><text x={x1} y={y1 + 4} fill="white" fontSize="11" fontWeight="bold" textAnchor="middle" className="font-mono">{ann.label || ""}</text></g>);
-          default:
-            return null;
-        }
-      })}
-    </svg>
-  );
-}
-
-export default function ResultsDashboard({ analysis, imagePreviewUrl, imageBase64, imageMimeType, onNewAnalysis }: ResultsDashboardProps) {
+export default function ResultsDashboard({ analysis, imagePreviewUrl, onNewAnalysis }: ResultsDashboardProps) {
   const { grading, visual_analysis, trade_plan, external_data, grounding_result, confidence_score, final_verdict, meta } = analysis;
-  const [annotations, setAnnotations] = useState<ChartAnnotation[]>([]);
-  const [annotationSummary, setAnnotationSummary] = useState<string | null>(null);
-  const [isAnnotating, setIsAnnotating] = useState(false);
-  const [showAnnotations, setShowAnnotations] = useState(false);
-  const [annotationError, setAnnotationError] = useState<string | null>(null);
-  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
-  const imageRef = useRef<HTMLImageElement>(null);
-
-  useEffect(() => {
-    if (imageRef.current && imageRef.current.complete) {
-      setImageDimensions({ width: imageRef.current.clientWidth, height: imageRef.current.clientHeight });
-    }
-  }, [imagePreviewUrl]);
-
-  const handleImageLoad = () => {
-    if (imageRef.current) {
-      setImageDimensions({ width: imageRef.current.clientWidth, height: imageRef.current.clientHeight });
-    }
-  };
-
-  const handleAnnotate = async () => {
-    if (!imageBase64 || !imageMimeType) {
-      setAnnotationError("Image data not available for annotation");
-      return;
-    }
-    setIsAnnotating(true);
-    setAnnotationError(null);
-    try {
-      const response = await apiRequest('POST', '/api/annotate', { strategy: meta.strategy_used, imageBase64, imageMimeType });
-      const data = await response.json();
-      if (data.success && data.annotations) {
-        setAnnotations(data.annotations);
-        setAnnotationSummary(data.summary || null);
-        setShowAnnotations(true);
-      } else {
-        setAnnotationError(data.message || "Annotation failed");
-      }
-    } catch (err) {
-      setAnnotationError(err instanceof Error ? err.message : "Annotation failed");
-    } finally {
-      setIsAnnotating(false);
-    }
-  };
 
   const isBullish = trade_plan.bias === 'BULLISH' || trade_plan.bias === 'LONG';
   const isBearish = trade_plan.bias === 'BEARISH' || trade_plan.bias === 'SHORT';
@@ -172,33 +81,13 @@ export default function ResultsDashboard({ analysis, imagePreviewUrl, imageBase6
           {imagePreviewUrl && (
             <Card className="p-4 space-y-3">
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Market Context</span>
-                  {annotations.length > 0 && (
-                    <Button variant={showAnnotations ? "default" : "outline"} size="sm" onClick={() => setShowAnnotations(!showAnnotations)} data-testid="button-toggle-annotations">
-                      <Layers className="w-4 h-4 mr-1" />
-                      {showAnnotations ? "Hide" : "Show"} Annotations
-                    </Button>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  {annotations.length === 0 && imageBase64 && (
-                    <Button variant="outline" size="sm" onClick={handleAnnotate} disabled={isAnnotating} data-testid="button-annotate-chart">
-                      {isAnnotating ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Analyzing...</>) : (<><Pencil className="w-4 h-4 mr-2" />AI Annotate</>)}
-                    </Button>
-                  )}
-                  <Button variant="ghost" size="sm">
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-                </div>
+                <span className="text-sm font-medium">Market Context</span>
+                <Button variant="ghost" size="sm">
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
               </div>
-              {annotationError && <p className="text-sm text-fin-bear">{annotationError}</p>}
-              {annotationSummary && showAnnotations && <p className="text-sm text-muted-foreground">{annotationSummary}</p>}
               <div className="relative">
-                <img ref={imageRef} src={imagePreviewUrl} alt="Analyzed chart" className="w-full h-auto rounded-md" data-testid="img-chart-display" onLoad={handleImageLoad} />
-                {showAnnotations && annotations.length > 0 && imageDimensions.width > 0 && (
-                  <AnnotationOverlay annotations={annotations} width={imageDimensions.width} height={imageDimensions.height} />
-                )}
+                <img src={imagePreviewUrl} alt="Analyzed chart" className="w-full h-auto rounded-md" data-testid="img-chart-display" />
               </div>
             </Card>
           )}

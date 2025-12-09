@@ -1,0 +1,35 @@
+I need you to refactor the application to implement a "Cost Optimization Strategy" and remove the experimental "Chart Annotation" feature.
+
+Please perform the following changes file by file:
+
+### 1. Cost Optimization (services/geminiService.ts)
+We need to reduce the API bill. Grounding (Google Search) is the most expensive part ($0.035/call).
+- **Update `validateChart`**: Switch the model from `gemini-2.5-flash` to `gemini-2.5-flash-lite-preview-02-05`. This model is cheaper and sufficient for simple binary validation.
+- **Update `analyzeChart`**: Implement a "Grounding Cache" using `localStorage`.
+  - **Logic**: Before calling the API, check if we have recent search results for this specific Ticker (valid for 1 hour).
+  - **Cache Hit**: If valid data exists, inject the cached search summary directly into the text prompt strings and **DO NOT** pass `tools: [{googleSearch: {}}]` in the config. This saves the search fee.
+  - **Cache Miss**: Pass the search tool as normal. On response, save the `external_data` and search summary to `localStorage` with a timestamp.
+
+### 2. Remove Annotation Feature (Cleanup)
+The annotation feature is being deprecated. Remove all traces of it.
+
+- **Modify `types.ts`**:
+  - Remove `annotatedImagePreviewUrl` and `isAnnotating` from the `AppState` interface.
+
+- **Modify `services/geminiService.ts`**:
+  - Delete the `annotateChart` export function entirely.
+  - Remove any imports related to it.
+
+- **Modify `components/AnalysisView.tsx`**:
+  - Remove the "Annotate Chart" button.
+  - Remove the "Show AI Vision" toggle button.
+  - Remove the `annotatedImage`, `onAnnotate`, and `isAnnotating` props.
+  - Remove logic that swaps the displayed image source based on `showAnnotated`.
+
+- **Modify `App.tsx`**:
+  - Remove the `annotateChart` import.
+  - Remove the `handleAnnotate` function.
+  - Remove `annotatedImagePreviewUrl` and `isAnnotating` from the initial state object.
+  - Update `<AnalysisView />` usage to stop passing the removed props.
+
+Please output the full updated code for the modified files.
