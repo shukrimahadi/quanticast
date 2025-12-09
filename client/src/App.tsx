@@ -10,6 +10,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import News from "@/pages/news";
 import HistoryPage from "@/pages/history";
+import AdminDashboard from "@/pages/admin";
 
 function Router() {
   return (
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/news" component={News} />
       <Route path="/history" component={HistoryPage} />
+      <Route path="/admin" component={AdminDashboard} />
       <Route component={NotFound} />
     </Switch>
   );

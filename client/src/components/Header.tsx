@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'wouter';
-import { Activity, History, BarChart3, Newspaper, TrendingUp, LogOut, User } from 'lucide-react';
+import { Activity, History, BarChart3, Newspaper, TrendingUp, LogOut, User, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/lib/UserContext';
 import {
@@ -122,6 +122,17 @@ export default function Header({ showBackButton, onBackClick }: HeaderProps) {
             >
               <History className="w-4 h-4" />
               History
+            </Button>
+          </Link>
+          <Link href="/admin">
+            <Button
+              variant={location === '/admin' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              data-testid="nav-admin"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              Admin
             </Button>
           </Link>
         </nav>
