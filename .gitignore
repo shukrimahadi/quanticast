@@ -8,3 +8,8 @@ vite.config.ts.*
 .local/
 install-live.log
 npm-install.log
+
+.env
+.local/
+install-live.log
+npm-install.log
