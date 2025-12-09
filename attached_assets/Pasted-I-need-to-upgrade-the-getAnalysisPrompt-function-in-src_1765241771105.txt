@@ -1,0 +1,97 @@
+I need to upgrade the `getAnalysisPrompt` function in `src/constants.ts` to implement a sophisticated "Asset-Aware Grounding Agent".
+
+Currently, the prompt is too generic. I need you to rewrite `getAnalysisPrompt` so that it dynamically adjusts its Google Search strategy based on the Asset Class of the ticker.
+
+Please update `src/constants.ts` with the following logic inside `getAnalysisPrompt`:
+
+1.  **Asset Detection Logic**: The AI should implicitly detect if the ticker is Crypto, Equity, Forex, Commodity, or Index.
+2.  **Asset-Specific Search Matrices**:
+    *   **Equities (e.g., AAPL, NVDA)**: Search for "Earnings Date", "Analyst Revisions", "Insider Trading", "Short Interest".
+    *   **Crypto (e.g., BTC, ETH, SOL)**: Search for "Protocol Upgrades", "SEC/Regulation News", "On-Chain Activity", "Exchange Outflows".
+    *   **Forex (e.g., EURUSD, USDJPY)**: Search for "Central Bank Rate Decisions (ECB/Fed)", "CPI/NFP Data Releases", "Geopolitical Conflict".
+    *   **Commodities (e.g., XAUUSD, CL1!)**: Search for "Supply/Demand Reports", "Dollar Index (DXY) Strength", "Inventory Data".
+    *   **Indices (e.g., SPX, NQ)**: Search for "VIX Level", "Bond Yields (10Y)", "Market Breadth".
+3.  **The "Binary Event" Check**: The AI must explicitly flag if a major event (Earnings, Fed Meeting) is happening in the next 24-48 hours. If yes, it must recommend reducing risk.
+4.  **Output**: Ensure the output strictly adheres to the existing JSON schema in `types.ts`, specifically populating the `agent_grounding`, `external_data`, and `grading` fields.
+
+Here is the specific prompt structure I want you to use within the function:
+
+```typescript
+export const getAnalysisPrompt = (strategy: StrategyType, ticker: string, user?: UserProfile) => {
+  const strat = STRATEGY_DEFINITIONS[strategy];
+
+  // User Context construction... (Keep existing user logic)
+  const userContext = user ? `...` : "";
+
+  return `
+  You are a Senior Macro Strategist & Risk Manager. 
+  Your goal is to validate a technical setup for ${ticker} using the ${strategy} strategy by cross-referencing it with Real-Time Fundamental Data.
+
+  ---
+  ### PHASE 1: ASSET CLASSIFICATION & SEARCH STRATEGY
+  First, identify the asset class of ${ticker} and execute the corresponding search queries using the [googleSearch] tool:
+
+  **IF EQUITIES (Stocks):**
+  1. "Next Earnings Date for ${ticker}" (CRITICAL: If < 48h, Flag as Binary Event).
+  2. "${ticker} Analyst Upgrades/Downgrades last 7 days".
+  3. "${ticker} Institutional Insider Buying vs Selling".
+  4. "${ticker} major news headlines last 24h".
+
+  **IF CRYPTO:**
+  1. "${ticker} regulatory news SEC/Gov".
+  2. "Crypto Market Sentiment Fear and Greed Index".
+  3. "Major protocol upgrades or hacks for ${ticker} last 7 days".
+  4. "Bitcoin dominance trend today".
+
+  **IF FOREX (Currencies):**
+  1. "Economic Calendar High Impact Events for USD and [Counter Currency] next 48h".
+  2. "Central Bank (Fed/ECB/BOJ) interest rate stance".
+  3. "Geopolitical escalation news today".
+
+  **IF INDICES (SPX, NASDAQ):**
+  1. "VIX Index current level and trend".
+  2. "US 10 Year Treasury Yield trend today".
+  3. "Stock Market Breadth Advance/Decline line".
+
+  ---
+  ### PHASE 2: DATA SYNTHESIS (The "Why")
+  Analyze the search results to determine the "Market Weather":
+  - **Risk-On**: Supporting growth/crypto?
+  - **Risk-Off**: Flight to safety (Gold/USD)?
+  - **Neutral**: Chop/Range.
+
+  ---
+  ### PHASE 3: THE GRADING MATRIX (Synthesis)
+  Combine the Visual Analysis (which you perform via Vision) with this Search Data.
+
+  **CRITICAL RULES FOR GRADING:**
+  1. **BINARY EVENT RULE**: If an Earnings Call, CPI Release, or Fed Rate Decision is occurring within 48 hours, the MAXIMUM Grade is "B" (regardless of how perfect the chart looks). If within 12 hours, Max Grade is "C".
+  2. **DIVERGENCE RULE**: If Technicals are Bullish, but Fundamentals are Bearish (e.g., Insider Selling + Downgrades), DOWNGRADE by one full letter grade.
+  3. **CONFLUENCE RULE**: If Technicals are Bullish AND Fundamentals are Bullish (e.g., Analyst Upgrades + Sector Strength), Upgrade the Confidence Score.
+
+  ---
+  ### PHASE 4: JSON OUTPUT
+  Output purely valid JSON matching this schema. Do not output Markdown outside the JSON.
+
+  {
+    "meta": { ... },
+    "grading": {
+       "grade": "A+|A|B|C",
+       "data_score": (0-10 Score based on Fundamental Support),
+       "sentiment_score": (0-10 Contrarian Score),
+       ...
+    },
+    "external_data": {
+       "search_summary": "Summarize the specific news found.",
+       "market_sentiment": "Risk-On" | "Risk-Off" | "Neutral",
+       "sector_performance": "Leader/Laggard status"
+    },
+    "agent_grounding": {
+       "search_queries_run": ["List", "Queries", "Here"],
+       "critical_findings": "The ONE most important fundamental fact found (e.g. 'Earnings tomorrow').",
+       "divergence_warning": boolean (True if Chart disagrees with Data)
+    },
+    ... (Rest of Schema)
+  }
+  `;
+};

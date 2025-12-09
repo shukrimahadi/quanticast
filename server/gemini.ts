@@ -245,47 +245,179 @@ Be specific with price levels. Use the ${strategy} methodology strictly.`;
 }
 
 /**
- * Grounding Agent: Real-time web search for market catalysts
- * Uses Gemini's Google Search grounding to fetch:
- * - Earnings calendar
- * - Economic events (CPI, FOMC, NFP)
- * - News sentiment
- * - Options flow / implied volatility
+ * Asset Classification for dynamic search strategies
+ */
+function classifyAsset(ticker: string): { 
+  assetClass: "EQUITY" | "CRYPTO" | "FOREX" | "COMMODITY" | "INDEX"; 
+  searchQueries: string[];
+} {
+  const t = ticker.toUpperCase();
+  
+  // Crypto detection
+  const cryptoPatterns = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'ADA', 'AVAX', 'MATIC', 'LINK', 'DOT', 'USDT', 'USDC', 'BINANCE:', 'COINBASE:', 'BITSTAMP:'];
+  if (cryptoPatterns.some(p => t.includes(p))) {
+    return {
+      assetClass: "CRYPTO",
+      searchQueries: [
+        `${ticker} regulatory news SEC government today`,
+        `Crypto market sentiment Fear and Greed Index today`,
+        `${ticker} protocol upgrades or security issues last 7 days`,
+        `Bitcoin dominance trend and crypto market outlook today`,
+      ],
+    };
+  }
+  
+  // Forex detection
+  const forexPatterns = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD', 'XAUUSD', 'XAGUSD', 'OANDA:', 'FX:'];
+  if (forexPatterns.some(p => t.includes(p))) {
+    const currencies = extractCurrencyPair(t);
+    return {
+      assetClass: "FOREX",
+      searchQueries: [
+        `Economic calendar high impact events ${currencies} next 48 hours`,
+        `Central Bank interest rate decision Fed ECB BOJ latest`,
+        `Geopolitical news affecting currency markets today`,
+        `${currencies} technical outlook and analyst forecast today`,
+      ],
+    };
+  }
+  
+  // Commodity detection  
+  const commodityPatterns = ['GOLD', 'SILVER', 'OIL', 'USOIL', 'UKOIL', 'NATGAS', 'COPPER', 'WHEAT', 'CORN', 'TVC:', 'COMEX:', 'NYMEX:', 'CL1!', 'GC1!', 'SI1!'];
+  if (commodityPatterns.some(p => t.includes(p))) {
+    return {
+      assetClass: "COMMODITY",
+      searchQueries: [
+        `${ticker} supply demand report inventory data today`,
+        `US Dollar Index DXY strength trend today`,
+        `${ticker} futures positioning COT report latest`,
+        `Geopolitical risks affecting commodity prices today`,
+      ],
+    };
+  }
+  
+  // Index detection
+  const indexPatterns = ['SPX', 'SPY', 'QQQ', 'NDX', 'DJI', 'VIX', 'RUT', 'IWM', 'SP:', 'DJ:', 'NASDAQ:', 'CBOE:'];
+  if (indexPatterns.some(p => t.includes(p))) {
+    return {
+      assetClass: "INDEX",
+      searchQueries: [
+        `VIX volatility index level and trend today`,
+        `US 10 Year Treasury yield trend today`,
+        `Stock market breadth advance decline line today`,
+        `S&P 500 sector performance leaders laggards today`,
+      ],
+    };
+  }
+  
+  // Default to Equity
+  return {
+    assetClass: "EQUITY",
+    searchQueries: [
+      `${ticker} next earnings date and expectations`,
+      `${ticker} analyst upgrades downgrades last 7 days`,
+      `${ticker} institutional insider buying selling activity`,
+      `${ticker} major news headlines today`,
+    ],
+  };
+}
+
+function extractCurrencyPair(ticker: string): string {
+  const t = ticker.toUpperCase();
+  if (t.includes('EURUSD')) return 'EUR USD';
+  if (t.includes('GBPUSD')) return 'GBP USD';
+  if (t.includes('USDJPY')) return 'USD JPY';
+  if (t.includes('AUDUSD')) return 'AUD USD';
+  if (t.includes('USDCAD')) return 'USD CAD';
+  if (t.includes('XAUUSD')) return 'Gold USD';
+  if (t.includes('XAGUSD')) return 'Silver USD';
+  return ticker;
+}
+
+/**
+ * Asset-Aware Grounding Agent: Real-time web search for market catalysts
+ * Dynamically adjusts search strategy based on asset class:
+ * - EQUITIES: Earnings, analyst ratings, insider activity
+ * - CRYPTO: Regulatory news, on-chain data, sentiment
+ * - FOREX: Central bank policy, economic calendar
+ * - COMMODITIES: Supply/demand, USD strength
+ * - INDICES: VIX, yields, market breadth
  */
 export async function runGroundingSearch(
   ticker: string,
   bias: string,
   originalGrade: "A+" | "A" | "B" | "C"
 ): Promise<GroundingResult> {
-  console.log(`[GROUNDING] Starting search for ${ticker}, bias: ${bias}, grade: ${originalGrade}`);
+  const { assetClass, searchQueries } = classifyAsset(ticker);
+  console.log(`[GROUNDING] Asset: ${assetClass} | Ticker: ${ticker} | Bias: ${bias} | Grade: ${originalGrade}`);
+  console.log(`[GROUNDING] Search queries:`, searchQueries);
   
-  const searchQuery = `${ticker} stock upcoming earnings date economic calendar news sentiment analyst ratings recent headlines`;
-  
-  const systemPrompt = `You are a professional market research analyst. Your task is to gather REAL-TIME data for trading decisions.
+  const systemPrompt = `You are a Senior Macro Strategist & Risk Manager. Your goal is to validate a technical ${bias} setup for ${ticker} by cross-referencing with REAL-TIME fundamental data.
 
-For ticker: ${ticker}
-Current trade bias: ${bias}
+---
+### PHASE 1: ASSET CLASSIFICATION
+Identified Asset Class: ${assetClass}
+
+${assetClass === 'EQUITY' ? `**EQUITY SEARCH FOCUS:**
+- EARNINGS DATE: Is earnings within 48 hours? (CRITICAL BINARY EVENT)
+- ANALYST ACTIVITY: Any upgrades/downgrades last 7 days?
+- INSIDER TRADING: Net buying or selling trend?
+- NEWS SENTIMENT: Recent headlines positive or negative?` : ''}
+
+${assetClass === 'CRYPTO' ? `**CRYPTO SEARCH FOCUS:**
+- REGULATORY: Any SEC/government actions or statements?
+- SENTIMENT: Fear & Greed Index level (0-100)?
+- PROTOCOL RISKS: Any hacks, exploits, or upgrade issues?
+- MACRO CRYPTO: Bitcoin dominance trend affecting altcoins?` : ''}
+
+${assetClass === 'FOREX' ? `**FOREX SEARCH FOCUS:**
+- CENTRAL BANKS: Fed/ECB/BOJ rate decisions imminent?
+- ECONOMIC DATA: CPI, NFP, GDP releases within 48h? (BINARY EVENT)
+- GEOPOLITICAL: Conflicts or trade tensions affecting currencies?
+- CARRY TRADE: Interest rate differentials supporting trade?` : ''}
+
+${assetClass === 'COMMODITY' ? `**COMMODITY SEARCH FOCUS:**
+- SUPPLY/DEMAND: Inventory reports or production data?
+- USD CORRELATION: Dollar Index (DXY) strength/weakness?
+- GEOPOLITICAL: Supply disruption risks?
+- SEASONALITY: Seasonal demand patterns?` : ''}
+
+${assetClass === 'INDEX' ? `**INDEX SEARCH FOCUS:**
+- VIX LEVEL: Above 20 = elevated fear, below 15 = complacency
+- BOND YIELDS: 10Y Treasury trend (rising = headwind for stocks)
+- BREADTH: Advance/Decline line confirming or diverging?
+- SECTOR ROTATION: Which sectors leading/lagging?` : ''}
+
+---
+### PHASE 2: THE BINARY EVENT CHECK (CRITICAL)
+After searching, you MUST determine if a BINARY EVENT is imminent:
+- Earnings call within 48 hours
+- CPI/NFP/FOMC announcement within 48 hours
+- Major regulatory decision for crypto
+- Central bank rate decision
+
+**BINARY EVENT GRADING RULES:**
+- Event within 12 hours: MAX GRADE = "C" (regardless of chart quality)
+- Event within 48 hours: MAX GRADE = "B" (one grade cap)
+- No imminent events: Normal grading applies
+
+---
+### PHASE 3: DIVERGENCE ANALYSIS
+Compare Technical Bias (${bias}) with Fundamental Data:
+- **CONFLUENCE**: Technicals + Fundamentals align → Consider upgrade
+- **DIVERGENCE**: Technicals say BUY but news is bearish → DOWNGRADE by 1 level
+- **CONFLICT**: Multiple negative factors → Can downgrade by 2 levels
+
 Current technical grade: ${originalGrade}
+Apply adjustments based on your findings.
 
-Search for and analyze:
-1. EARNINGS: When is the next earnings date? Is it within 5 trading days (imminent)?
-2. ECONOMIC CALENDAR: Any high-impact events (CPI, FOMC, NFP) within 3 days?
-3. NEWS SENTIMENT: What's the recent news tone? Bullish, bearish, neutral, or mixed?
-4. VOLATILITY: Any unusual options activity or high implied volatility?
-5. RISK ASSESSMENT: Are there binary event risks that could invalidate the trade?
-
-After gathering data, determine if the grade should be ADJUSTED:
-- If earnings/CPI/FOMC is imminent (within 3 days): Downgrade by 1 level (binary event risk)
-- If news sentiment CONFLICTS with trade bias: Downgrade by 1 level
-- If news sentiment SUPPORTS trade bias AND no binary events: Keep or upgrade
-- Grade floor is C, ceiling is A+
-
-Provide your analysis in the following format. Be specific with dates and percentages.`;
+---
+Execute the search queries and synthesize findings.`;
 
   try {
     // Use Gemini with Google Search grounding tool
-    // Combine system prompt and query into a single user message for grounding
-    const fullPrompt = `${systemPrompt}\n\nNow search for real-time information about: ${searchQuery}`;
+    // Combine system prompt with asset-specific queries
+    const fullPrompt = `${systemPrompt}\n\nExecute these searches:\n${searchQueries.map((q, i) => `${i + 1}. ${q}`).join('\n')}`;
     
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
