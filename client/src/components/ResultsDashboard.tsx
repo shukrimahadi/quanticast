@@ -141,116 +141,46 @@ export default function ResultsDashboard({ analysis, imagePreviewUrl, onNewAnaly
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  {/* Earnings */}
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span className="uppercase text-xs font-medium">Earnings</span>
-                    </div>
-                    {grounding_result.earnings.is_imminent ? (
-                      <p className="text-fin-warning font-medium">
-                        {grounding_result.earnings.next_date} ({grounding_result.earnings.days_until}d)
-                      </p>
-                    ) : grounding_result.earnings.next_date ? (
-                      <p className="text-foreground">{grounding_result.earnings.next_date}</p>
-                    ) : (
-                      <p className="text-muted-foreground">No upcoming date</p>
-                    )}
-                  </div>
+                {/* Narrative Summary */}
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {grounding_result.narrative_summary}
+                </p>
 
-                  {/* Sentiment */}
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <Newspaper className="w-3.5 h-3.5" />
-                      <span className="uppercase text-xs font-medium">Sentiment</span>
-                    </div>
-                    <p className={
-                      grounding_result.sentiment.news_sentiment === 'Bullish' ? 'text-fin-bull font-medium' :
-                      grounding_result.sentiment.news_sentiment === 'Bearish' ? 'text-fin-bear font-medium' :
-                      'text-foreground'
-                    }>
-                      {grounding_result.sentiment.news_sentiment}
-                      {grounding_result.sentiment.analyst_rating && ` (${grounding_result.sentiment.analyst_rating})`}
-                    </p>
+                {/* Critical Insight Blockquote */}
+                <div className="border-l-2 border-fin-accent/50 pl-4 py-2 bg-muted/30 rounded-r-md">
+                  <div className="flex items-center gap-2 mb-1">
+                    <AlertCircle className="w-4 h-4 text-fin-accent" />
+                    <span className="text-xs font-semibold uppercase tracking-wide">Critical Insight</span>
                   </div>
-
-                  {/* Catalyst Alignment */}
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <Activity className="w-3.5 h-3.5" />
-                      <span className="uppercase text-xs font-medium">Catalyst</span>
-                    </div>
-                    <p className={
-                      grounding_result.risk_assessment.catalyst_alignment === 'Supports' ? 'text-fin-bull font-medium' :
-                      grounding_result.risk_assessment.catalyst_alignment === 'Conflicts' ? 'text-fin-bear font-medium' :
-                      'text-foreground'
-                    }>
-                      {grounding_result.risk_assessment.catalyst_alignment === 'Supports' && <CheckCircle className="w-3 h-3 inline mr-1" />}
-                      {grounding_result.risk_assessment.catalyst_alignment === 'Conflicts' && <XCircle className="w-3 h-3 inline mr-1" />}
-                      {grounding_result.risk_assessment.catalyst_alignment}
-                    </p>
-                  </div>
-
-                  {/* Binary Event Risk */}
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <Shield className="w-3.5 h-3.5" />
-                      <span className="uppercase text-xs font-medium">Event Risk</span>
-                    </div>
-                    {grounding_result.risk_assessment.binary_event_risk ? (
-                      <p className="text-fin-warning font-medium flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" />
-                        Binary Event
-                      </p>
-                    ) : (
-                      <p className="text-fin-bull font-medium flex items-center gap-1">
-                        <CheckCircle className="w-3 h-3" />
-                        Clear
-                      </p>
-                    )}
-                  </div>
+                  <p className="text-sm italic text-foreground/80">
+                    "{grounding_result.critical_insight}"
+                  </p>
                 </div>
 
-                {/* Headlines */}
-                {grounding_result.sentiment.recent_headlines.length > 0 && (
-                  <div className="pt-3 border-t border-border">
-                    <p className="text-xs text-muted-foreground uppercase mb-2">Recent Headlines</p>
-                    <ul className="space-y-1">
-                      {grounding_result.sentiment.recent_headlines.slice(0, 2).map((headline, i) => (
-                        <li key={i} className="text-xs text-muted-foreground truncate">{headline}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Risk Factors */}
-                {grounding_result.risk_assessment.risk_factors.length > 0 && (
-                  <div className="pt-3 border-t border-border">
-                    <p className="text-xs text-muted-foreground uppercase mb-2">Risk Factors</p>
-                    <div className="flex flex-wrap gap-1">
-                      {grounding_result.risk_assessment.risk_factors.slice(0, 3).map((factor, i) => (
-                        <Badge key={i} variant="outline" className="text-xs">
-                          {factor}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Sources */}
+                {/* Sources as pill badges */}
                 {grounding_result.sources.length > 0 && (
-                  <div className="pt-3 border-t border-border">
-                    <p className="text-xs text-muted-foreground uppercase mb-2">Sources ({grounding_result.sources.length})</p>
-                    <div className="flex flex-wrap gap-2">
-                      {grounding_result.sources.slice(0, 3).map((source, i) => (
-                        <a key={i} href={source.uri} target="_blank" rel="noopener noreferrer" 
-                          className="text-xs text-fin-accent hover:underline flex items-center gap-1">
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {grounding_result.sources.slice(0, 10).map((source, i) => {
+                      let domain = source.title;
+                      try {
+                        domain = new URL(source.uri).hostname.replace('www.', '');
+                      } catch {
+                        domain = source.title.slice(0, 20);
+                      }
+                      return (
+                        <a 
+                          key={i} 
+                          href={source.uri} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 text-xs text-fin-accent hover:bg-muted transition-colors"
+                          data-testid={`link-source-${i}`}
+                        >
                           <ExternalLink className="w-3 h-3" />
-                          {source.title.slice(0, 30)}{source.title.length > 30 ? '...' : ''}
+                          {domain}
                         </a>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

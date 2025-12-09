@@ -502,6 +502,8 @@ Parse and structure this into the following JSON format. Use the actual data fro
 {
   "ticker": "${ticker}",
   "search_performed": true,
+  "narrative_summary": "A comprehensive 3-5 sentence paragraph summarizing the fundamental outlook. Write like a senior macro strategist explaining whether external data supports or conflicts with the ${bias} technical bias. Include specific data points: earnings dates, economic events, analyst ratings, news sentiment, and any imminent binary events. Mention the current time context for any scheduled events.",
+  "critical_insight": "A 1-2 sentence italic summary for traders. Start with whether there's an imminent event or not. Then provide the key takeaway about the fundamental-technical confluence. Example: 'No imminent Fed event. Strong bullish macro sentiment for tech driven by AI demand and Fed rate cut expectations. Some analysts caution about valuation concerns.'",
   "earnings": {
     "next_date": "YYYY-MM-DD or null if unknown",
     "days_until": number or null,
@@ -569,6 +571,8 @@ Apply these grading rules:
     const result: GroundingResult = {
       ticker: (parsedAny.ticker as string) || ticker,
       search_performed: true,
+      narrative_summary: parsedAny.narrative_summary || `External data analysis for ${ticker} based on ${bias} technical bias.`,
+      critical_insight: parsedAny.critical_insight || "Analysis based on available market data.",
       earnings: {
         next_date: parsedAny.earnings?.next_date || null,
         days_until: parsedAny.earnings?.days_until ?? null,
@@ -616,6 +620,8 @@ Apply these grading rules:
     return {
       ticker,
       search_performed: false,
+      narrative_summary: "Market grounding search was not performed. Analysis is based on visual chart patterns only.",
+      critical_insight: "No external data available. Rely on technical analysis.",
       earnings: {
         next_date: null,
         days_until: null,

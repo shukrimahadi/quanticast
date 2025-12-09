@@ -58,6 +58,8 @@ export interface ExternalData {
 export interface GroundingResult {
   ticker: string;
   search_performed: boolean;
+  narrative_summary: string;
+  critical_insight: string;
   earnings: {
     next_date: string | null;
     days_until: number | null;

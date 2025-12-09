@@ -47,6 +47,8 @@ export const agentGroundingSchema = z.object({
 export const groundingResultSchema = z.object({
   ticker: z.string(),
   search_performed: z.boolean(),
+  narrative_summary: z.string(),
+  critical_insight: z.string(),
   earnings: z.object({
     next_date: z.string().nullable(),
     days_until: z.number().nullable(),
