@@ -14,6 +14,7 @@ import { SponsorBanner } from '@/components/SponsorBanner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Loader2, AlertCircle, Play, Search, TrendingUp, Camera, ChevronDown } from 'lucide-react';
 
 const SPONSOR_CONFIG: SponsorConfig = {
