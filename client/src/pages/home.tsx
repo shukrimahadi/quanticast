@@ -11,7 +11,6 @@ import AnalysisLogs from '@/components/AnalysisLogs';
 import ResultsDashboard from '@/components/ResultsDashboard';
 import { TradingViewWidget } from '@/components/TradingViewWidget';
 import { SponsorBanner } from '@/components/SponsorBanner';
-import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,7 +18,7 @@ import { Loader2, AlertCircle, Play, Search, TrendingUp, Camera, ChevronDown } f
 
 const SPONSOR_CONFIG: SponsorConfig = {
   enabled: true,
-  imageUrl: '/banner-sponsor.png', // local fallback to avoid external placeholder errors
+  imageUrl: 'https://via.placeholder.com/1200x200/1a1a2e/3b82f6?text=Your+Ad+Here+-+Partner+With+QUANTICAST+AI',
   targetUrl: '#',
   altText: 'Become a QUANTICAST AI Partner',
 };
@@ -100,6 +99,7 @@ export default function Home() {
   const [tickerInput, setTickerInput] = useState<string>('');
   const [tickerDropdownOpen, setTickerDropdownOpen] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
+  const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   const filteredTickers = useMemo(() => {
     const query = tickerInput.trim().toUpperCase();
@@ -249,6 +249,18 @@ export default function Home() {
 
   const captureActiveChart = async () => {
     setCaptureError(null);
+
+    if (isMobile) {
+      setCaptureError("Screen capture is blocked on mobile browsers. Please take a screenshot and upload below.");
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      setCaptureError("Screen capture is not supported in this browser. Please upload a screenshot manually.");
+      return;
+    }
+
+    setCaptureError(null);
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { displaySurface: "browser" as DisplayCaptureSurfaceType },
@@ -318,7 +330,7 @@ export default function Home() {
 
   if (step === 'RESULTS' && analysisData) {
     return (
-      <div className="min-h-screen bg-background pb-20">
+      <div className="min-h-screen bg-background">
         <Header />
         <main className="max-w-7xl mx-auto px-4 py-6">
           <ResultsDashboard
@@ -327,13 +339,12 @@ export default function Home() {
             onNewAnalysis={handleNewAnalysis}
           />
         </main>
-        <BottomNav />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background">
       <Header />
       
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
@@ -420,9 +431,15 @@ export default function Home() {
                   </div>
                 )}
               </div>
-              <Button onClick={captureActiveChart} data-testid="button-scan-chart">
+              <Button
+                onClick={captureActiveChart}
+                data-testid="button-scan-chart"
+                variant="secondary"
+                disabled={isMobile}
+                className={isMobile ? 'opacity-70 cursor-not-allowed' : ''}
+              >
                 <Camera className="w-4 h-4 mr-2" />
-                Scan Chart
+                {isMobile ? 'Upload screenshot' : 'Scan Chart'}
               </Button>
             </div>
           </div>
@@ -490,7 +507,6 @@ export default function Home() {
           </div>
         </div>
       </main>
-      <BottomNav />
     </div>
   );
 }
