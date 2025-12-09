@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { AppStep, StrategyType, FinalAnalysis } from '@/lib/types';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -13,7 +13,59 @@ import { TradingViewWidget } from '@/components/TradingViewWidget';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Loader2, AlertCircle, Play, Search, TrendingUp, Camera } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Loader2, AlertCircle, Play, Search, TrendingUp, Camera, ChevronDown } from 'lucide-react';
+
+interface TickerOption {
+  symbol: string;
+  name: string;
+  category: string;
+}
+
+const TICKER_DATABASE: TickerOption[] = [
+  { symbol: 'TVC:GOLD', name: 'Gold Spot', category: 'Commodities' },
+  { symbol: 'OANDA:XAUUSD', name: 'Gold/USD (OANDA)', category: 'Forex' },
+  { symbol: 'COMEX:GC1!', name: 'Gold Futures (COMEX)', category: 'Futures' },
+  { symbol: 'TVC:SILVER', name: 'Silver Spot', category: 'Commodities' },
+  { symbol: 'OANDA:XAGUSD', name: 'Silver/USD (OANDA)', category: 'Forex' },
+  { symbol: 'COMEX:SI1!', name: 'Silver Futures (COMEX)', category: 'Futures' },
+  { symbol: 'TVC:USOIL', name: 'WTI Crude Oil', category: 'Commodities' },
+  { symbol: 'NYMEX:CL1!', name: 'Crude Oil Futures (NYMEX)', category: 'Futures' },
+  { symbol: 'TVC:UKOIL', name: 'Brent Crude Oil', category: 'Commodities' },
+  { symbol: 'TVC:NATGAS', name: 'Natural Gas', category: 'Commodities' },
+  { symbol: 'BINANCE:BTCUSDT', name: 'Bitcoin/USDT (Binance)', category: 'Crypto' },
+  { symbol: 'BITSTAMP:BTCUSD', name: 'Bitcoin/USD (Bitstamp)', category: 'Crypto' },
+  { symbol: 'COINBASE:BTCUSD', name: 'Bitcoin/USD (Coinbase)', category: 'Crypto' },
+  { symbol: 'BINANCE:ETHUSDT', name: 'Ethereum/USDT (Binance)', category: 'Crypto' },
+  { symbol: 'BITSTAMP:ETHUSD', name: 'Ethereum/USD (Bitstamp)', category: 'Crypto' },
+  { symbol: 'BINANCE:SOLUSDT', name: 'Solana/USDT (Binance)', category: 'Crypto' },
+  { symbol: 'BINANCE:XRPUSDT', name: 'Ripple/USDT (Binance)', category: 'Crypto' },
+  { symbol: 'BINANCE:DOGEUSDT', name: 'Dogecoin/USDT (Binance)', category: 'Crypto' },
+  { symbol: 'OANDA:EURUSD', name: 'EUR/USD (OANDA)', category: 'Forex' },
+  { symbol: 'FX:EURUSD', name: 'EUR/USD (FX)', category: 'Forex' },
+  { symbol: 'OANDA:GBPUSD', name: 'GBP/USD (OANDA)', category: 'Forex' },
+  { symbol: 'OANDA:USDJPY', name: 'USD/JPY (OANDA)', category: 'Forex' },
+  { symbol: 'OANDA:USDCHF', name: 'USD/CHF (OANDA)', category: 'Forex' },
+  { symbol: 'OANDA:AUDUSD', name: 'AUD/USD (OANDA)', category: 'Forex' },
+  { symbol: 'OANDA:USDCAD', name: 'USD/CAD (OANDA)', category: 'Forex' },
+  { symbol: 'SP:SPX', name: 'S&P 500 Index', category: 'Indices' },
+  { symbol: 'AMEX:SPY', name: 'S&P 500 ETF', category: 'ETF' },
+  { symbol: 'NASDAQ:QQQ', name: 'Nasdaq 100 ETF', category: 'ETF' },
+  { symbol: 'DJ:DJI', name: 'Dow Jones Industrial', category: 'Indices' },
+  { symbol: 'NASDAQ:NDX', name: 'Nasdaq 100 Index', category: 'Indices' },
+  { symbol: 'CBOE:VIX', name: 'Volatility Index', category: 'Indices' },
+  { symbol: 'TVC:DXY', name: 'US Dollar Index', category: 'Indices' },
+  { symbol: 'NASDAQ:AAPL', name: 'Apple Inc.', category: 'Stocks' },
+  { symbol: 'NASDAQ:MSFT', name: 'Microsoft Corp.', category: 'Stocks' },
+  { symbol: 'NASDAQ:GOOGL', name: 'Alphabet Inc.', category: 'Stocks' },
+  { symbol: 'NASDAQ:AMZN', name: 'Amazon.com Inc.', category: 'Stocks' },
+  { symbol: 'NASDAQ:NVDA', name: 'NVIDIA Corp.', category: 'Stocks' },
+  { symbol: 'NASDAQ:TSLA', name: 'Tesla Inc.', category: 'Stocks' },
+  { symbol: 'NASDAQ:META', name: 'Meta Platforms', category: 'Stocks' },
+  { symbol: 'NYSE:JPM', name: 'JPMorgan Chase', category: 'Stocks' },
+  { symbol: 'NYSE:V', name: 'Visa Inc.', category: 'Stocks' },
+  { symbol: 'NYSE:WMT', name: 'Walmart Inc.', category: 'Stocks' },
+];
 
 async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -38,7 +90,18 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [tickerInput, setTickerInput] = useState<string>('');
+  const [tickerDropdownOpen, setTickerDropdownOpen] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
+
+  const filteredTickers = useMemo(() => {
+    const query = tickerInput.trim().toUpperCase();
+    if (!query) return TICKER_DATABASE.slice(0, 10);
+    return TICKER_DATABASE.filter(t => 
+      t.symbol.toUpperCase().includes(query) ||
+      t.name.toUpperCase().includes(query) ||
+      t.category.toUpperCase().includes(query)
+    ).slice(0, 15);
+  }, [tickerInput]);
   const [lastImageBase64, setLastImageBase64] = useState<string | null>(null);
   const [lastImageMimeType, setLastImageMimeType] = useState<string | null>(null);
 
@@ -127,66 +190,20 @@ export default function Home() {
     setError(null);
   };
 
-  const handleTickerSearch = () => {
-    const val = tickerInput.trim().toUpperCase();
-    if (val) {
-      const formatted = formatTradingViewSymbol(val);
-      setActiveTicker(formatted);
-      setTickerInput('');
-    }
+  const handleTickerSelect = (symbol: string) => {
+    setActiveTicker(symbol);
+    setTickerInput('');
+    setTickerDropdownOpen(false);
   };
 
-  function formatTradingViewSymbol(input: string): string {
-    if (input.includes(':')) return input;
-    
-    const symbol = input.toUpperCase();
-    
-    const forexPairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD', 
-      'EURGBP', 'EURJPY', 'GBPJPY', 'XAUUSD', 'XAGUSD'];
-    if (forexPairs.includes(symbol)) return `OANDA:${symbol}`;
-    
-    const commodities: Record<string, string> = {
-      'GOLD': 'TVC:GOLD',
-      'SILVER': 'TVC:SILVER',
-      'OIL': 'TVC:USOIL',
-      'USOIL': 'TVC:USOIL',
-      'BRENT': 'TVC:UKOIL',
-      'NATGAS': 'TVC:NATGAS',
-      'COPPER': 'COMEX:HG1!',
-    };
-    if (commodities[symbol]) return commodities[symbol];
-    
-    const crypto: Record<string, string> = {
-      'BTC': 'BINANCE:BTCUSDT',
-      'BTCUSD': 'BITSTAMP:BTCUSD',
-      'BITCOIN': 'BINANCE:BTCUSDT',
-      'ETH': 'BINANCE:ETHUSDT',
-      'ETHUSD': 'BITSTAMP:ETHUSD',
-      'ETHEREUM': 'BINANCE:ETHUSDT',
-      'SOL': 'BINANCE:SOLUSDT',
-      'XRP': 'BINANCE:XRPUSDT',
-      'DOGE': 'BINANCE:DOGEUSDT',
-    };
-    if (crypto[symbol]) return crypto[symbol];
-    
-    const indices: Record<string, string> = {
-      'SPX': 'SP:SPX',
-      'SPY': 'AMEX:SPY',
-      'QQQ': 'NASDAQ:QQQ',
-      'DJI': 'DJ:DJI',
-      'DOW': 'DJ:DJI',
-      'NDX': 'NASDAQ:NDX',
-      'VIX': 'CBOE:VIX',
-      'DXY': 'TVC:DXY',
-    };
-    if (indices[symbol]) return indices[symbol];
-    
-    return `NASDAQ:${symbol}`;
-  }
-
   const handleTickerKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleTickerSearch();
+    if (e.key === 'Enter' && tickerInput.trim()) {
+      const val = tickerInput.trim().toUpperCase();
+      const symbol = val.includes(':') ? val : `NASDAQ:${val}`;
+      handleTickerSelect(symbol);
+    }
+    if (e.key === 'Escape') {
+      setTickerDropdownOpen(false);
     }
   };
 
@@ -314,17 +331,61 @@ export default function Home() {
               <span className="text-sm text-muted-foreground">({activeTicker})</span>
             </div>
             <div className="flex flex-wrap gap-2 items-center">
-              <Input
-                placeholder="Enter ticker (e.g., AAPL, NYSE:MSFT)"
-                value={tickerInput}
-                onChange={(e) => setTickerInput(e.target.value)}
-                onKeyDown={handleTickerKeyDown}
-                className="w-64"
-                data-testid="input-ticker"
-              />
-              <Button variant="outline" size="icon" onClick={handleTickerSearch} data-testid="button-search-ticker">
-                <Search className="w-4 h-4" />
-              </Button>
+              <Popover open={tickerDropdownOpen} onOpenChange={setTickerDropdownOpen}>
+                <PopoverTrigger asChild>
+                  <div className="relative">
+                    <Input
+                      placeholder="Search ticker (AAPL, GOLD, BTC...)"
+                      value={tickerInput}
+                      onChange={(e) => {
+                        setTickerInput(e.target.value);
+                        if (e.target.value.length > 0) setTickerDropdownOpen(true);
+                      }}
+                      onFocus={() => setTickerDropdownOpen(true)}
+                      onKeyDown={handleTickerKeyDown}
+                      className="w-72 pr-8"
+                      data-testid="input-ticker"
+                    />
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-0" align="start" sideOffset={4}>
+                  <div className="max-h-80 overflow-y-auto">
+                    {filteredTickers.length === 0 ? (
+                      <div className="p-3 text-sm text-muted-foreground text-center">
+                        No matches. Press Enter to use: {tickerInput.toUpperCase().includes(':') ? tickerInput.toUpperCase() : `NASDAQ:${tickerInput.toUpperCase()}`}
+                      </div>
+                    ) : (
+                      <>
+                        {Object.entries(
+                          filteredTickers.reduce((acc, t) => {
+                            if (!acc[t.category]) acc[t.category] = [];
+                            acc[t.category].push(t);
+                            return acc;
+                          }, {} as Record<string, TickerOption[]>)
+                        ).map(([category, tickers]) => (
+                          <div key={category}>
+                            <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/50 sticky top-0">
+                              {category}
+                            </div>
+                            {tickers.map((t) => (
+                              <button
+                                key={t.symbol}
+                                onClick={() => handleTickerSelect(t.symbol)}
+                                className="w-full px-3 py-2 text-left text-sm hover-elevate flex items-center justify-between gap-2"
+                                data-testid={`ticker-option-${t.symbol.replace(':', '-')}`}
+                              >
+                                <span className="font-mono text-xs text-fin-accent">{t.symbol}</span>
+                                <span className="text-muted-foreground truncate">{t.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Button onClick={captureActiveChart} data-testid="button-scan-chart">
                 <Camera className="w-4 h-4 mr-2" />
                 Scan Chart
