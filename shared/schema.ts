@@ -171,3 +171,24 @@ export const users = {} as any;
 export const insertUserSchema = z.object({ username: z.string(), password: z.string() });
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = { id: string; username: string; password: string };
+
+export const experienceLevelSchema = z.enum(['Beginner', 'Intermediate', 'Advanced', 'Professional']);
+export const tradingGoalSchema = z.enum(['Income', 'Growth', 'Preservation', 'Speculation']);
+export const riskToleranceSchema = z.enum(['Conservative', 'Moderate', 'Aggressive', 'Very Aggressive']);
+
+export const userProfileSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  displayName: z.string(),
+  photoUrl: z.string().optional(),
+  experienceLevel: experienceLevelSchema,
+  tradingGoal: tradingGoalSchema,
+  riskTolerance: riskToleranceSchema,
+  onboardingCompleted: z.boolean(),
+  createdAt: z.number(),
+});
+
+export type ExperienceLevel = z.infer<typeof experienceLevelSchema>;
+export type TradingGoal = z.infer<typeof tradingGoalSchema>;
+export type RiskTolerance = z.infer<typeof riskToleranceSchema>;
+export type UserProfile = z.infer<typeof userProfileSchema>;
