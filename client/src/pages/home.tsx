@@ -196,11 +196,41 @@ export default function Home() {
     setTickerDropdownOpen(false);
   };
 
+  function formatTradingViewSymbol(input: string): string {
+    if (input.includes(':')) return input;
+    
+    const symbol = input.toUpperCase();
+    
+    const forexPairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD', 
+      'EURGBP', 'EURJPY', 'GBPJPY', 'XAUUSD', 'XAGUSD'];
+    if (forexPairs.includes(symbol)) return `OANDA:${symbol}`;
+    
+    const commodities: Record<string, string> = {
+      'GOLD': 'TVC:GOLD', 'SILVER': 'TVC:SILVER', 'OIL': 'TVC:USOIL',
+      'USOIL': 'TVC:USOIL', 'BRENT': 'TVC:UKOIL', 'NATGAS': 'TVC:NATGAS', 'COPPER': 'COMEX:HG1!',
+    };
+    if (commodities[symbol]) return commodities[symbol];
+    
+    const crypto: Record<string, string> = {
+      'BTC': 'BINANCE:BTCUSDT', 'BTCUSD': 'BITSTAMP:BTCUSD', 'BITCOIN': 'BINANCE:BTCUSDT',
+      'ETH': 'BINANCE:ETHUSDT', 'ETHUSD': 'BITSTAMP:ETHUSD', 'ETHEREUM': 'BINANCE:ETHUSDT',
+      'SOL': 'BINANCE:SOLUSDT', 'XRP': 'BINANCE:XRPUSDT', 'DOGE': 'BINANCE:DOGEUSDT',
+    };
+    if (crypto[symbol]) return crypto[symbol];
+    
+    const indices: Record<string, string> = {
+      'SPX': 'SP:SPX', 'SPY': 'AMEX:SPY', 'QQQ': 'NASDAQ:QQQ', 'DJI': 'DJ:DJI',
+      'DOW': 'DJ:DJI', 'NDX': 'NASDAQ:NDX', 'VIX': 'CBOE:VIX', 'DXY': 'TVC:DXY',
+    };
+    if (indices[symbol]) return indices[symbol];
+    
+    return `NASDAQ:${symbol}`;
+  }
+
   const handleTickerKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && tickerInput.trim()) {
-      const val = tickerInput.trim().toUpperCase();
-      const symbol = val.includes(':') ? val : `NASDAQ:${val}`;
-      handleTickerSelect(symbol);
+      const formatted = formatTradingViewSymbol(tickerInput.trim());
+      handleTickerSelect(formatted);
     }
     if (e.key === 'Escape') {
       setTickerDropdownOpen(false);
