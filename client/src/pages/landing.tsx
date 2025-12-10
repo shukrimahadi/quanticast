@@ -1,6 +1,9 @@
 import { Link } from "wouter";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { MarketPulse } from "@/components/MarketPulse";
+import { SignalFeed } from "@/components/SignalFeed";
 
 const features = [
   {
@@ -26,6 +29,26 @@ const stats = [
   { label: "Win-Rate Boost", value: "+18%" },
 ];
 
+const logos = ["Binance Labs", "Anchorage", "Quant Fund", "HFT Desk", "DeFi VC"];
+
+const testimonials = [
+  {
+    quote: "The fastest way to vet setups before they hit our desk.",
+    name: "Sarah K.",
+    title: "VP Trading, Macro Desk",
+  },
+  {
+    quote: "Pattern calls are scarily accurate. We shaved hours off prep.",
+    name: "Leo M.",
+    title: "Lead Quant, Digital Assets",
+  },
+  {
+    quote: "Grounding + SMC narrative is unique. Great for junior analysts.",
+    name: "Ava R.",
+    title: "PM, Multi-Strategy Fund",
+  },
+];
+
 export default function Landing() {
   return (
     <div className="min-h-screen bg-[var(--bg-app,#0B0E11)] text-foreground">
@@ -33,6 +56,8 @@ export default function Landing() {
 
       <main className="relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#2962FF22,transparent_35%),radial-gradient(circle_at_bottom,#00FF9415,transparent_30%)] pointer-events-none" />
+
+        <MarketPulse />
 
         <section className="text-center px-5 py-20 md:py-24 relative">
           <div className="max-w-4xl mx-auto space-y-6">
@@ -92,6 +117,16 @@ export default function Landing() {
           </div>
         </section>
 
+        <section className="px-6 pb-12 relative" style={{ maxWidth: "1200px", margin: "0 auto" }}>
+          <div className="bg-black/30 border border-gray-800 rounded-xl p-4 backdrop-blur flex flex-wrap justify-center gap-4">
+            {logos.map((logo) => (
+              <span key={logo} className="text-sm font-semibold text-gray-400 tracking-wide">
+                {logo}
+              </span>
+            ))}
+          </div>
+        </section>
+
         <section className="px-6 pb-16 relative" style={{ maxWidth: "1200px", margin: "0 auto" }}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {features.map((card) => (
@@ -104,6 +139,26 @@ export default function Landing() {
                 <p className="text-sm text-muted-foreground leading-relaxed">{card.text}</p>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section className="px-6 pb-16 relative" style={{ maxWidth: "1200px", margin: "0 auto" }}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <SignalFeed />
+            </div>
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white">What teams say</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                {testimonials.map((t) => (
+                  <Card key={t.name} className="p-4 bg-[var(--bg-panel,#151A21)] border border-gray-800">
+                    <p className="text-sm text-white mb-3 leading-relaxed">“{t.quote}”</p>
+                    <p className="text-xs text-[#00FF94] font-semibold">{t.name}</p>
+                    <p className="text-[11px] text-gray-400">{t.title}</p>
+                  </Card>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
       </main>
