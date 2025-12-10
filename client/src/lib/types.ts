@@ -166,3 +166,36 @@ export interface SponsorConfig {
   targetUrl: string;
   altText: string;
 }
+
+export type SubscriptionTier = 'FREE' | 'PRO' | 'MAX';
+
+export const TIER_LIMITS: Record<SubscriptionTier, {
+  label: string;
+  maxDailyScans: number | null;
+  allowedStrategies: StrategyType[];
+  groundingEnabled: boolean;
+}> = {
+  FREE: {
+    label: 'Free',
+    maxDailyScans: 3,
+    allowedStrategies: [
+      StrategyType.DOW,
+      StrategyType.CAN_SLIM,
+      StrategyType.SENTIMENT,
+      StrategyType.VCP,
+    ],
+    groundingEnabled: false,
+  },
+  PRO: {
+    label: 'Pro',
+    maxDailyScans: null,
+    allowedStrategies: Object.values(StrategyType) as StrategyType[],
+    groundingEnabled: true,
+  },
+  MAX: {
+    label: 'Max',
+    maxDailyScans: null,
+    allowedStrategies: Object.values(StrategyType) as StrategyType[],
+    groundingEnabled: true,
+  },
+};

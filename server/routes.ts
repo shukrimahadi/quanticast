@@ -20,7 +20,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         });
       }
 
-      const { strategy, imageBase64, imageMimeType } = parseResult.data;
+      const { strategy, imageBase64, imageMimeType, subscriptionTier = 'FREE' } = parseResult.data;
 
       // Step 1: Validate the chart
       const validation = await validateChart(imageBase64, imageMimeType);
@@ -52,7 +52,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const groundingResult = await runGroundingSearch(
         metadata.ticker,
         analysis.trade_plan.bias,
-        analysis.grading.grade as "A+" | "A" | "B" | "C"
+        analysis.grading.grade as "A+" | "A" | "B" | "C",
+        subscriptionTier
       );
 
       // Step 4: Apply grade adjustment based on grounding confluence

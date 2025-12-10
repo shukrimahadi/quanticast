@@ -13,6 +13,8 @@ export default function StrategySelectorExample() {
           setSelected(s);
           console.log('Selected strategy:', s);
         }}
+        userTier="PRO"
+        onUpgradeClick={() => console.log('Upgrade clicked')}
       />
     </div>
   );

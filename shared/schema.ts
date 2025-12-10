@@ -156,6 +156,7 @@ export const analyzeRequestSchema = z.object({
   strategy: z.nativeEnum(StrategyType),
   imageBase64: z.string(),
   imageMimeType: z.string(),
+  subscriptionTier: z.enum(['FREE', 'PRO', 'MAX']).optional(),
   userProfile: z.object({
     experienceLevel: z.enum(['Beginner', 'Intermediate', 'Advanced', 'Professional']).optional(),
     tradingGoal: z.enum(['Income', 'Growth', 'Preservation', 'Speculation']).optional(),
@@ -182,6 +183,7 @@ export type User = { id: string; username: string; password: string };
 export const experienceLevelSchema = z.enum(['Beginner', 'Intermediate', 'Advanced', 'Professional']);
 export const tradingGoalSchema = z.enum(['Income', 'Growth', 'Preservation', 'Speculation']);
 export const riskToleranceSchema = z.enum(['Conservative', 'Moderate', 'Aggressive', 'Very Aggressive']);
+export const subscriptionTierSchema = z.enum(['FREE', 'PRO', 'MAX']);
 
 export const userProfileSchema = z.object({
   id: z.string(),
@@ -193,9 +195,13 @@ export const userProfileSchema = z.object({
   riskTolerance: riskToleranceSchema,
   onboardingCompleted: z.boolean(),
   createdAt: z.number(),
+  subscriptionTier: subscriptionTierSchema,
+  dailyUsageCount: z.number(),
+  lastUsageDate: z.string(),
 });
 
 export type ExperienceLevel = z.infer<typeof experienceLevelSchema>;
 export type TradingGoal = z.infer<typeof tradingGoalSchema>;
 export type RiskTolerance = z.infer<typeof riskToleranceSchema>;
+export type SubscriptionTier = z.infer<typeof subscriptionTierSchema>;
 export type UserProfile = z.infer<typeof userProfileSchema>;

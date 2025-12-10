@@ -373,8 +373,49 @@ function extractCurrencyPair(ticker: string): string {
 export async function runGroundingSearch(
   ticker: string,
   bias: string,
-  originalGrade: "A+" | "A" | "B" | "C"
+  originalGrade: "A+" | "A" | "B" | "C",
+  subscriptionTier: 'FREE' | 'PRO' | 'MAX'
 ): Promise<GroundingResult> {
+  if (subscriptionTier === 'FREE') {
+    return {
+      ticker,
+      search_performed: false,
+      narrative_summary: "Search Grounding is disabled for this tier. Perform technical analysis only.",
+      critical_insight: "Upgrade to PRO or MAX to enable grounding search and catalyst checks.",
+      earnings: {
+        next_date: null,
+        days_until: null,
+        is_imminent: false,
+        last_surprise: null,
+      },
+      economic_calendar: {
+        upcoming_events: [],
+        high_impact_soon: false,
+      },
+      sentiment: {
+        news_sentiment: 'Neutral',
+        recent_headlines: [],
+        analyst_rating: null,
+      },
+      volatility: {
+        implied_volatility_percentile: null,
+        options_unusual_activity: false,
+      },
+      risk_assessment: {
+        binary_event_risk: false,
+        risk_factors: [],
+        catalyst_alignment: 'Neutral',
+      },
+      grade_adjustment: {
+        original_grade: originalGrade,
+        adjusted_grade: originalGrade,
+        adjustment_reason: "Grounding skipped for Free tier",
+      },
+      sources: [],
+      raw_search_response: "",
+    };
+  }
+
   // Check cache first to save Google Search costs ($0.035/query)
   const cachedResult = getCachedGrounding(ticker);
   if (cachedResult) {

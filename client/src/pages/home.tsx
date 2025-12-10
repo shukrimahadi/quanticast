@@ -1,19 +1,22 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { AppStep, StrategyType, FinalAnalysis, SponsorConfig } from '@/lib/types';
+import { AppStep, StrategyType, FinalAnalysis, SponsorConfig, TIER_LIMITS, SubscriptionTier } from '@/lib/types';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useTicker } from '@/lib/TickerContext';
+import { useUser } from '@/lib/UserContext';
 import Header from '@/components/Header';
 import ChartUpload from '@/components/ChartUpload';
 import StrategySelector from '@/components/StrategySelector';
 import AnalysisProgress from '@/components/AnalysisProgress';
 import AnalysisLogs from '@/components/AnalysisLogs';
 import ResultsDashboard from '@/components/ResultsDashboard';
+import { PricingView } from '@/components/PricingView';
 import { TradingViewWidget } from '@/components/TradingViewWidget';
 import { SponsorBanner } from '@/components/SponsorBanner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { Loader2, AlertCircle, Play, Search, TrendingUp, Camera, ChevronDown } from 'lucide-react';
 
 const SPONSOR_CONFIG: SponsorConfig = {
@@ -89,6 +92,7 @@ async function fileToBase64(file: File): Promise<string> {
 
 export default function Home() {
   const { activeTicker, setActiveTicker } = useTicker();
+  const { user, upgradeTier, incrementUsage } = useUser();
   const [step, setStep] = useState<AppStep>('UPLOAD');
   const [selectedStrategy, setSelectedStrategy] = useState<StrategyType>(StrategyType.SMC);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
@@ -99,6 +103,13 @@ export default function Home() {
   const [tickerInput, setTickerInput] = useState<string>('');
   const [tickerDropdownOpen, setTickerDropdownOpen] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
+  const [view, setView] = useState<'ANALYZE' | 'PRICING'>('ANALYZE');
+
+  const currentTier: SubscriptionTier = user?.subscriptionTier ?? 'FREE';
+  const tierLimits = TIER_LIMITS[currentTier];
+  const dailyLimit = tierLimits.maxDailyScans;
+  const usageUsed = user?.dailyUsageCount ?? 0;
+  const usageProgress = dailyLimit ? Math.min((usageUsed / dailyLimit) * 100, 100) : 0;
 
   const filteredTickers = useMemo(() => {
     const query = tickerInput.trim().toUpperCase();
@@ -114,6 +125,24 @@ export default function Home() {
     setLogs(prev => [...prev, message]);
   }, []);
 
+  const openPricing = useCallback(() => setView('PRICING'), []);
+
+  const handleUpgrade = useCallback((tier: SubscriptionTier) => {
+    upgradeTier(tier);
+    setView('ANALYZE');
+  }, [upgradeTier]);
+
+  const dailyLimitReached = dailyLimit !== null && usageUsed >= dailyLimit;
+
+  useEffect(() => {
+    if (!tierLimits.allowedStrategies.includes(selectedStrategy)) {
+      const fallback = tierLimits.allowedStrategies[0];
+      if (fallback) {
+        setSelectedStrategy(fallback);
+      }
+    }
+  }, [selectedStrategy, tierLimits.allowedStrategies]);
+
   const analyzeMutation = useMutation({
     mutationFn: async (params: { strategy: StrategyType; file: File }) => {
       const imageBase64 = await fileToBase64(params.file);
@@ -121,6 +150,7 @@ export default function Home() {
         strategy: params.strategy,
         imageBase64,
         imageMimeType: params.file.type,
+        subscriptionTier: currentTier,
       });
       return response.json();
     },
@@ -154,7 +184,19 @@ export default function Home() {
   };
 
   const runAnalysis = async () => {
-    if (!imageFile) return;
+    if (!imageFile || !user) return;
+
+    if (!tierLimits.allowedStrategies.includes(selectedStrategy)) {
+      alert('This strategy is locked on your current plan. Upgrade to unlock.');
+      openPricing();
+      return;
+    }
+
+    if (dailyLimitReached) {
+      alert('Daily scan limit reached. Upgrade to continue.');
+      openPricing();
+      return;
+    }
 
     setStep('VALIDATING');
     setLogs([]);
@@ -181,6 +223,7 @@ export default function Home() {
       addLog('Generating trade plan...');
     }, 1500);
 
+    incrementUsage();
     analyzeMutation.mutate({ strategy: selectedStrategy, file: imageFile });
   };
 
@@ -314,6 +357,15 @@ export default function Home() {
       setCaptureError("Screen capture failed. Please upload manually.");
     }
   };
+
+  if (view === 'PRICING') {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header showBackButton onBackClick={() => setView('ANALYZE')} />
+        <PricingView currentTier={currentTier} onUpgrade={handleUpgrade} />
+      </div>
+    );
+  }
 
   if (step === 'RESULTS' && analysisData) {
     return (
@@ -459,15 +511,43 @@ export default function Home() {
           </div>
 
           <div className="space-y-6">
+          <Card className="p-4 bg-card/70 border-border/70">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Plan</p>
+                <h3 className="text-lg font-semibold">{tierLimits.label}</h3>
+                <p className="text-xs text-muted-foreground">
+                  {tierLimits.groundingEnabled ? 'Grounding enabled' : 'Grounding disabled to save costs'}
+                </p>
+              </div>
+              <Button size="sm" variant="outline" onClick={openPricing}>
+                Manage plan
+              </Button>
+            </div>
+            {dailyLimit !== null ? (
+              <div className="mt-3 space-y-1">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Daily limit</span>
+                  <span>{usageUsed}/{dailyLimit} scans</span>
+                </div>
+                <Progress value={usageProgress} />
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground mt-3">Unlimited scans on this plan.</p>
+            )}
+          </Card>
+
             <StrategySelector
               selected={selectedStrategy}
-              onSelect={setSelectedStrategy}
+            onSelect={setSelectedStrategy}
+            userTier={currentTier}
+            onUpgradeClick={openPricing}
             />
 
             <div className="flex justify-end">
               <Button
                 size="lg"
-                disabled={!imageFile || step === 'VALIDATING' || step === 'ANALYZING'}
+                disabled={!imageFile || step === 'VALIDATING' || step === 'ANALYZING' || dailyLimitReached}
                 onClick={runAnalysis}
                 className="w-full sm:w-auto"
                 data-testid="button-analyze"
@@ -480,7 +560,7 @@ export default function Home() {
                 ) : (
                   <>
                     <Play className="w-4 h-4 mr-2" />
-                    Analyze Chart
+                    {dailyLimitReached ? 'Upgrade to continue' : 'Analyze Chart'}
                   </>
                 )}
               </Button>

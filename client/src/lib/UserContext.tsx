@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { UserProfile, ExperienceLevel, TradingGoal, RiskTolerance } from '@shared/schema';
+import type { UserProfile, ExperienceLevel, TradingGoal, RiskTolerance, SubscriptionTier } from '@shared/schema';
 
 interface UserContextType {
   user: UserProfile | null;
@@ -9,11 +9,15 @@ interface UserContextType {
   logout: () => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
   completeOnboarding: (experience: ExperienceLevel, goal: TradingGoal, risk: RiskTolerance) => void;
+  upgradeTier: (tier: SubscriptionTier) => void;
+  incrementUsage: () => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'quanticast_user';
+const TODAY = () => new Date().toISOString().slice(0, 10);
+const DEFAULT_TIER: SubscriptionTier = 'FREE';
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -23,8 +27,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
-        const parsed = JSON.parse(stored);
-        setUser(parsed);
+        const parsed = JSON.parse(stored) as UserProfile;
+        const hydrated: UserProfile = {
+          ...parsed,
+          subscriptionTier: parsed.subscriptionTier ?? DEFAULT_TIER,
+          dailyUsageCount: parsed.dailyUsageCount ?? 0,
+          lastUsageDate: parsed.lastUsageDate ?? TODAY(),
+        };
+        setUser(hydrated);
       } catch (e) {
         localStorage.removeItem(STORAGE_KEY);
       }
@@ -33,11 +43,22 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-    } else {
+    if (!user) {
       localStorage.removeItem(STORAGE_KEY);
+      return;
     }
+
+    const today = TODAY();
+    if (user.lastUsageDate !== today) {
+      setUser({
+        ...user,
+        dailyUsageCount: 0,
+        lastUsageDate: today,
+      });
+      return;
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
   }, [user]);
 
   const login = (email: string, displayName: string, photoUrl?: string) => {
@@ -51,6 +72,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
       riskTolerance: 'Moderate',
       onboardingCompleted: false,
       createdAt: Date.now(),
+      subscriptionTier: DEFAULT_TIER,
+      dailyUsageCount: 0,
+      lastUsageDate: TODAY(),
     };
     setUser(newUser);
   };
@@ -77,6 +101,25 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const upgradeTier = (tier: SubscriptionTier) => {
+    if (user) {
+      setUser({
+        ...user,
+        subscriptionTier: tier,
+      });
+    }
+  };
+
+  const incrementUsage = () => {
+    if (user) {
+      setUser({
+        ...user,
+        dailyUsageCount: user.dailyUsageCount + 1,
+        lastUsageDate: TODAY(),
+      });
+    }
+  };
+
   return (
     <UserContext.Provider value={{
       user,
@@ -86,6 +129,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       logout,
       updateProfile,
       completeOnboarding,
+      upgradeTier,
+      incrementUsage,
     }}>
       {children}
     </UserContext.Provider>
