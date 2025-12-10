@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { MarketPulse } from "@/components/MarketPulse";
 import { SignalFeed } from "@/components/SignalFeed";
+import { TradingViewTape } from "@/components/TradingViewTape";
 
 const features = [
   {
@@ -57,6 +58,7 @@ export default function Landing() {
       <main className="relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#2962FF22,transparent_35%),radial-gradient(circle_at_bottom,#00FF9415,transparent_30%)] pointer-events-none" />
 
+        <TradingViewTape />
         <MarketPulse />
 
         <section className="text-center px-5 py-20 md:py-24 relative">
