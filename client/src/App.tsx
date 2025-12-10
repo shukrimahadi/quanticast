@@ -12,6 +12,7 @@ import News from "@/pages/news";
 import HistoryPage from "@/pages/history";
 import AdminDashboard from "@/pages/admin";
 import Landing from "@/pages/landing";
+import Account from "@/pages/account";
 
 function Router() {
   return (
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/news" component={News} />
       <Route path="/history" component={HistoryPage} />
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/account" component={Account} />
       <Route path="/" component={Landing} />
       <Route component={NotFound} />
     </Switch>

@@ -4,10 +4,10 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home, testId: "nav-home" },
+  { href: "/app", label: "Analysis", icon: TrendingUp, testId: "nav-analysis" },
   { href: "/news", label: "News", icon: Newspaper, testId: "nav-news" },
   { href: "/history", label: "History", icon: History, testId: "nav-history" },
-  { href: "/admin", label: "Admin", icon: ShieldCheck, testId: "nav-admin" },
-  { href: "/analysis", label: "Market", icon: TrendingUp, testId: "nav-analysis" },
+  { href: "/account", label: "Account", icon: ShieldCheck, testId: "nav-account" },
 ];
 
 export function BottomNav() {
@@ -18,8 +18,7 @@ export function BottomNav() {
       <div className="flex items-center justify-between rounded-2xl bg-card/80 border border-white/5 shadow-lg shadow-black/30 backdrop-blur-xl px-3 py-2">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const active =
-            location === item.href || (item.href === "/" && location === "/analysis");
+          const active = location === item.href;
           return (
             <Link key={item.href} href={item.href}>
               <a

@@ -134,6 +134,17 @@ export default function Header({ showBackButton, onBackClick }: HeaderProps) {
               History
             </Button>
           </Link>
+          <Link href="/account">
+            <Button
+              variant={location === '/account' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              data-testid="nav-account"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              Account
+            </Button>
+          </Link>
           <Link href="/admin">
             <Button
               variant={location === '/admin' ? 'secondary' : 'ghost'}
