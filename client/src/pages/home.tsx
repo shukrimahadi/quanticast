@@ -15,6 +15,8 @@ import ResultsDashboard from '@/components/ResultsDashboard';
 import { PricingView } from '@/components/PricingView';
 import { TradingViewWidget } from '@/components/TradingViewWidget';
 import { SponsorBanner } from '@/components/SponsorBanner';
+import { TradingViewOverview } from '@/components/TradingViewOverview';
+import { LiveAlerts } from '@/components/LiveAlerts';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -493,8 +495,8 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="space-y-6 lg:col-span-2">
             <div>
               <h2 className="text-xl font-semibold mb-2">Upload Chart</h2>
               <p className="text-sm text-muted-foreground mb-4">
@@ -514,6 +516,8 @@ export default function Home() {
           </div>
 
           <div className="space-y-6">
+            <LiveAlerts />
+
           <Card className="p-4 bg-card/70 border-border/70">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
@@ -542,12 +546,14 @@ export default function Home() {
 
             <StrategySelector
               selected={selectedStrategy}
-            onSelect={setSelectedStrategy}
-            userTier={currentTier}
-            onUpgradeClick={openPricing}
+              onSelect={setSelectedStrategy}
+              userTier={currentTier}
+              onUpgradeClick={openPricing}
             />
 
             <SignalFeed />
+
+            <TradingViewOverview />
 
             <div className="flex justify-end">
               <Button
