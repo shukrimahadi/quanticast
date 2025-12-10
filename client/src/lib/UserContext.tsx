@@ -8,7 +8,15 @@ interface UserContextType {
   login: (email: string, displayName: string, photoUrl?: string) => void;
   logout: () => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
-  completeOnboarding: (experience: ExperienceLevel, goal: TradingGoal, risk: RiskTolerance) => void;
+  completeOnboarding: (
+    experience: ExperienceLevel,
+    goal: TradingGoal,
+    risk: RiskTolerance,
+    dob: string,
+    nationality: string,
+    address: string,
+    phone: string
+  ) => void;
   upgradeTier: (tier: SubscriptionTier) => void;
   incrementUsage: () => void;
 }
@@ -18,6 +26,12 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 const STORAGE_KEY = 'quanticast_user';
 const TODAY = () => new Date().toISOString().slice(0, 10);
 const DEFAULT_TIER: SubscriptionTier = 'FREE';
+const EMPTY_PROFILE_FIELDS = {
+  dob: '',
+  nationality: '',
+  address: '',
+  phone: '',
+};
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -33,6 +47,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
           subscriptionTier: parsed.subscriptionTier ?? DEFAULT_TIER,
           dailyUsageCount: parsed.dailyUsageCount ?? 0,
           lastUsageDate: parsed.lastUsageDate ?? TODAY(),
+          dob: parsed.dob ?? '',
+          nationality: parsed.nationality ?? '',
+          address: parsed.address ?? '',
+          phone: parsed.phone ?? '',
         };
         setUser(hydrated);
       } catch (e) {
@@ -75,6 +93,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       subscriptionTier: DEFAULT_TIER,
       dailyUsageCount: 0,
       lastUsageDate: TODAY(),
+      ...EMPTY_PROFILE_FIELDS,
     };
     setUser(newUser);
   };
@@ -89,7 +108,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const completeOnboarding = (experience: ExperienceLevel, goal: TradingGoal, risk: RiskTolerance) => {
+  const completeOnboarding = (
+    experience: ExperienceLevel,
+    goal: TradingGoal,
+    risk: RiskTolerance,
+    dob: string,
+    nationality: string,
+    address: string,
+    phone: string
+  ) => {
     if (user) {
       setUser({
         ...user,
@@ -97,6 +124,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
         tradingGoal: goal,
         riskTolerance: risk,
         onboardingCompleted: true,
+        dob,
+        nationality,
+        address,
+        phone,
       });
     }
   };

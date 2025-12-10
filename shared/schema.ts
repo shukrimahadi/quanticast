@@ -198,6 +198,10 @@ export const userProfileSchema = z.object({
   subscriptionTier: subscriptionTierSchema,
   dailyUsageCount: z.number(),
   lastUsageDate: z.string(),
+  dob: z.string(),
+  nationality: z.string(),
+  address: z.string(),
+  phone: z.string(),
 });
 
 export type ExperienceLevel = z.infer<typeof experienceLevelSchema>;
