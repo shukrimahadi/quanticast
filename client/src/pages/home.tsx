@@ -17,6 +17,7 @@ import { TradingViewWidget } from '@/components/TradingViewWidget';
 import { SponsorBanner } from '@/components/SponsorBanner';
 import { TradingViewOverview } from '@/components/TradingViewOverview';
 import { LiveAlerts } from '@/components/LiveAlerts';
+import { MarketIntelligenceDashboard } from '@/components/MarketIntelligenceDashboard';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -393,6 +394,8 @@ export default function Home() {
       
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         <SponsorBanner config={SPONSOR_CONFIG} />
+
+        <MarketIntelligenceDashboard />
         
         {(step === 'VALIDATING' || step === 'ANALYZING') && (
           <AnalysisProgress currentStep={step} />
