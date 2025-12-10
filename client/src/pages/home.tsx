@@ -5,6 +5,8 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useTicker } from '@/lib/TickerContext';
 import { useUser } from '@/lib/UserContext';
 import Header from '@/components/Header';
+import { MarketPulse } from '@/components/MarketPulse';
+import { SignalFeed } from '@/components/SignalFeed';
 import ChartUpload from '@/components/ChartUpload';
 import StrategySelector from '@/components/StrategySelector';
 import AnalysisProgress from '@/components/AnalysisProgress';
@@ -385,6 +387,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <MarketPulse />
       
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         <SponsorBanner config={SPONSOR_CONFIG} />
@@ -543,6 +546,8 @@ export default function Home() {
             userTier={currentTier}
             onUpgradeClick={openPricing}
             />
+
+            <SignalFeed />
 
             <div className="flex justify-end">
               <Button

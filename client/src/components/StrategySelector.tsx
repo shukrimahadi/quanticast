@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { StrategyType, StrategyInfo, TIER_LIMITS, SubscriptionTier } from '@/lib/types';
 import { STRATEGIES } from '@/lib/constants';
 import { Card } from '@/components/ui/card';
-import { TrendingUp, Waves, BarChart2, LineChart, Activity, CircleDot, Target, Layers, Clock, AlertTriangle, GitBranch, Sparkles, Users, Crosshair, Lock } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TrendingUp, Waves, BarChart2, LineChart, Activity, CircleDot, Target, Layers, Clock, AlertTriangle, GitBranch, Sparkles, Users, Crosshair, Lock, Info } from 'lucide-react';
 
 interface StrategySelectorProps {
   selected: StrategyType;
@@ -87,7 +88,21 @@ export default function StrategySelector({ selected, onSelect, userTier, onUpgra
                   )}
                 </div>
                 <div>
-                  <h4 className="font-medium text-sm leading-tight">{strategy.name}</h4>
+                  <div className="flex items-start gap-2">
+                    <h4 className="font-medium text-sm leading-tight">{strategy.name}</h4>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="w-3.5 h-3.5 text-muted-foreground hover:text-fin-accent" />
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-[var(--bg-panel,#151A21)] border border-gray-800">
+                          <p className="text-xs text-muted-foreground max-w-[220px]">
+                            {strategy.description}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                     {strategy.description}
                   </p>
