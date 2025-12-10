@@ -7,6 +7,16 @@ import { analyzeRequestSchema, StrategyType } from "@shared/schema";
 import type { Report } from "@shared/schema";
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<void> {
+  const isRateLimitError = (message?: string) => {
+    if (!message) return false;
+    const m = message.toLowerCase();
+    return (
+      m.includes("429") ||
+      m.includes("resource_exhausted") ||
+      m.includes("rate limit") ||
+      m.includes("quota")
+    );
+  };
   
   // Analyze chart endpoint
   app.post("/api/analyze", async (req, res) => {
@@ -26,6 +36,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const validation = await validateChart(imageBase64, imageMimeType);
 
       if (!validation.is_valid_chart) {
+        if (isRateLimitError(validation.rejection_reason || "")) {
+          return res.status(429).json({
+            error: "Rate limit",
+            message: "AI quota temporarily exceeded. Please wait a minute and try again.",
+            validation,
+          });
+        }
         return res.status(400).json({
           error: "Invalid chart",
           rejection_reason: validation.rejection_reason,
@@ -106,10 +123,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         },
       });
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (isRateLimitError(message)) {
+        return res.status(429).json({
+          error: "Rate limit",
+          message: "AI quota temporarily exceeded. Please wait and retry shortly.",
+        });
+      }
       console.error("Analysis error:", error);
       return res.status(500).json({
         error: "Analysis failed",
-        message: error instanceof Error ? error.message : "Unknown error",
+        message,
       });
     }
   });

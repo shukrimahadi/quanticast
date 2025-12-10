@@ -111,9 +111,22 @@ Do not include metadata if the chart is invalid.`;
     };
   } catch (error) {
     console.error("Chart validation error:", error);
+    const msg = error instanceof Error ? error.message : String(error);
+    const lower = msg.toLowerCase();
+    if (
+      lower.includes("429") ||
+      lower.includes("resource_exhausted") ||
+      lower.includes("quota") ||
+      lower.includes("rate limit")
+    ) {
+      return {
+        is_valid_chart: false,
+        rejection_reason: "Rate limit: AI quota exceeded. Please wait and try again.",
+      };
+    }
     return {
       is_valid_chart: false,
-      rejection_reason: `Validation error: ${error}`,
+      rejection_reason: `Validation error: ${msg}`,
     };
   }
 }
@@ -267,7 +280,17 @@ Be specific with price levels. Use the ${strategy} methodology strictly.`;
     throw new Error("Empty response from model");
   } catch (error) {
     console.error("Chart analysis error:", error);
-    throw new Error(`Analysis failed: ${error}`);
+    const msg = error instanceof Error ? error.message : String(error);
+    const lower = msg.toLowerCase();
+    if (
+      lower.includes("429") ||
+      lower.includes("resource_exhausted") ||
+      lower.includes("quota") ||
+      lower.includes("rate limit")
+    ) {
+      throw new Error("Rate limit: AI quota exceeded. Please retry in a minute.");
+    }
+    throw new Error(`Analysis failed: ${msg}`);
   }
 }
 
