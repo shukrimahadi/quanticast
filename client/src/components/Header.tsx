@@ -145,17 +145,6 @@ export default function Header({ showBackButton, onBackClick }: HeaderProps) {
               Account
             </Button>
           </Link>
-          <Link href="/admin">
-            <Button
-              variant={location === '/admin' ? 'secondary' : 'ghost'}
-              size="sm"
-              className="gap-2"
-              data-testid="nav-admin"
-            >
-              <ShieldCheck className="w-4 h-4" />
-              Admin
-            </Button>
-          </Link>
         </nav>
 
         <div className="flex items-center gap-2">

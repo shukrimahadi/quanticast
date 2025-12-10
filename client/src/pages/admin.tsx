@@ -1,5 +1,9 @@
 import { Users, TrendingUp, DollarSign, Activity, Magnet, Zap, PieChart, Layers, ArrowUpRight, ShieldCheck, MoreHorizontal } from 'lucide-react';
+import { useEffect } from 'react';
+import { useLocation } from 'wouter';
 import Header from '@/components/Header';
+
+const ADMIN_TOKEN_KEY = "admin_session_token";
 
 const KPICard: React.FC<{ 
   title: string; 
@@ -48,6 +52,15 @@ const CohortCell: React.FC<{ pct: number }> = ({ pct }) => {
 };
 
 export default function AdminDashboard() {
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+    if (!token) {
+      setLocation("/admin/login");
+    }
+  }, [setLocation]);
+
   const recentUsers = [
     { id: 1, email: 'trader.joe@gmail.com', plan: 'PRO', status: 'Active', generated: 142, lastActive: '2m ago' },
     { id: 2, email: 'sarah.quant@fund.com', plan: 'INSTITUTIONAL', status: 'Active', generated: 890, lastActive: '1h ago' },

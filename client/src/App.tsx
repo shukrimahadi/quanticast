@@ -10,19 +10,29 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import News from "@/pages/news";
 import HistoryPage from "@/pages/history";
-import AdminDashboard from "@/pages/admin";
 import Landing from "@/pages/landing";
 import Account from "@/pages/account";
+import AdminLogin from "@/pages/admin-login";
+import AdminDashboard from "@/pages/admin";
 
-function Router() {
+function AppRouter() {
   return (
     <Switch>
       <Route path="/app" component={Home} />
       <Route path="/news" component={News} />
       <Route path="/history" component={HistoryPage} />
-      <Route path="/admin" component={AdminDashboard} />
       <Route path="/account" component={Account} />
       <Route path="/" component={Landing} />
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
+
+function AdminRouter() {
+  return (
+    <Switch>
+      <Route path="/admin/login" component={AdminLogin} />
+      <Route path="/admin/console" component={AdminDashboard} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -45,18 +55,20 @@ function AuthenticatedApp() {
 
   return (
     <TickerProvider>
-      <Router />
+      <AppRouter />
     </TickerProvider>
   );
 }
 
 function App() {
+  const isAdminPath = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <UserProvider>
           <Toaster />
-          <AuthenticatedApp />
+          {isAdminPath ? <AdminRouter /> : <AuthenticatedApp />}
         </UserProvider>
       </TooltipProvider>
     </QueryClientProvider>
