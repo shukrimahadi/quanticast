@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { MarketPulse } from "@/components/MarketPulse";
 import { SignalFeed } from "@/components/SignalFeed";
 import { TradingViewTape } from "@/components/TradingViewTape";
+import { TradingViewMiniGrid } from "@/components/TradingViewMiniGrid";
 
 const features = [
   {
@@ -162,6 +163,10 @@ export default function Landing() {
               </div>
             </div>
           </div>
+        </section>
+
+        <section className="px-6 pb-16 relative" style={{ maxWidth: "1200px", margin: "0 auto" }}>
+          <TradingViewMiniGrid />
         </section>
       </main>
     </div>
