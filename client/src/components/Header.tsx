@@ -101,9 +101,9 @@ export default function Header({ showBackButton, onBackClick }: HeaderProps) {
         </div>
 
         <nav className="hidden sm:flex items-center gap-1">
-          <Link href="/">
+          <Link href="/app">
             <Button
-              variant={location === '/' ? 'secondary' : 'ghost'}
+              variant={location === '/app' ? 'secondary' : 'ghost'}
               size="sm"
               className="gap-2"
               data-testid="nav-analysis"

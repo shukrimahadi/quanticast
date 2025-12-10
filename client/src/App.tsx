@@ -11,14 +11,16 @@ import Home from "@/pages/home";
 import News from "@/pages/news";
 import HistoryPage from "@/pages/history";
 import AdminDashboard from "@/pages/admin";
+import Landing from "@/pages/landing";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/app" component={Home} />
       <Route path="/news" component={News} />
       <Route path="/history" component={HistoryPage} />
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/" component={Landing} />
       <Route component={NotFound} />
     </Switch>
   );
