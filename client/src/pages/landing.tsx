@@ -3,9 +3,9 @@ import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { MarketPulse } from "@/components/MarketPulse";
-import { SignalFeed } from "@/components/SignalFeed";
 import { TradingViewTape } from "@/components/TradingViewTape";
 import { TradingViewMiniRow } from "@/components/TradingViewMiniRow";
+import { RecentAnalysesLanding } from "@/components/RecentAnalysesLanding";
 
 const features = [
   {
@@ -148,7 +148,7 @@ export default function Landing() {
         <section className="px-6 pb-16 relative" style={{ maxWidth: "1200px", margin: "0 auto" }}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <SignalFeed />
+              <RecentAnalysesLanding />
             </div>
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">What teams say</h3>
